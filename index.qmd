@@ -1,0 +1,224 @@
+---
+title: "Dashboard"
+format: html
+---
+
+::: {.week-header}
+# Learning Dashboard
+Welcome to your IPC Multilateral Price Index Learning Journey
+:::
+
+## Your Progress
+
+::: {.dashboard-grid}
+
+::: {.kpi-card}
+::: {.kpi-icon .primary}
+<i class="bi bi-trophy"></i>
+:::
+::: {.kpi-value}
+0/4
+:::
+::: {.kpi-label}
+Weeks Completed
+:::
+:::
+
+::: {.kpi-card}
+::: {.kpi-icon .secondary}
+<i class="bi bi-graph-up"></i>
+:::
+::: {.kpi-value}
+0%
+:::
+::: {.kpi-label}
+Overall Progress
+:::
+:::
+
+::: {.kpi-card}
+::: {.kpi-icon .primary}
+<i class="bi bi-code-slash"></i>
+:::
+::: {.kpi-value}
+0/12
+:::
+::: {.kpi-label}
+Exercises Done
+:::
+:::
+
+::: {.kpi-card}
+::: {.kpi-icon .secondary}
+<i class="bi bi-clock-history"></i>
+:::
+::: {.kpi-value}
+~16h
+:::
+::: {.kpi-label}
+Estimated Time
+:::
+:::
+
+:::
+
+## Skills You'll Master
+
+::: {style="margin: 2rem 0;"}
+<span class="skill-badge"><i class="bi bi-check-circle-fill"></i> Elementary Indices</span>
+<span class="skill-badge"><i class="bi bi-check-circle-fill"></i> Bilateral Indices</span>
+<span class="skill-badge"><i class="bi bi-check-circle-fill"></i> Multilateral Methods</span>
+<span class="skill-badge"><i class="bi bi-check-circle-fill"></i> GEKS Framework</span>
+<span class="skill-badge"><i class="bi bi-check-circle-fill"></i> Chain Linking</span>
+<span class="skill-badge"><i class="bi bi-check-circle-fill"></i> R Programming</span>
+<span class="skill-badge"><i class="bi bi-check-circle-fill"></i> Python Analysis</span>
+<span class="skill-badge"><i class="bi bi-check-circle-fill"></i> Data Visualization</span>
+:::
+
+## Weekly Progress
+
+::: {.progress-container}
+::: {.progress-label}
+<span>Week 1: Elementary Indices</span>
+<span>0%</span>
+:::
+::: {.progress}
+<div class="progress-bar" style="width: 0%"></div>
+:::
+:::
+
+::: {.progress-container}
+::: {.progress-label}
+<span>Week 2: Fisher & Törnqvist</span>
+<span>0%</span>
+:::
+::: {.progress}
+<div class="progress-bar" style="width: 0%"></div>
+:::
+:::
+
+::: {.progress-container}
+::: {.progress-label}
+<span>Week 3: GEKS Methods</span>
+<span>0%</span>
+:::
+::: {.progress}
+<div class="progress-bar" style="width: 0%"></div>
+:::
+:::
+
+::: {.progress-container}
+::: {.progress-label}
+<span>Week 4: Chain Linking</span>
+<span>0%</span>
+:::
+::: {.progress}
+<div class="progress-bar" style="width: 0%"></div>
+:::
+:::
+
+## Learning Path Timeline
+
+::: {.timeline}
+
+::: {.timeline-item}
+::: {.timeline-content}
+::: {.timeline-title}
+<i class="bi bi-1-circle-fill"></i> Week 1: Elementary Indices
+:::
+::: {.timeline-description}
+Master the foundational price indices: Jevons, Dutot, and Carli. Learn calculation methods in R and Python with practical examples.
+:::
+<div style="margin-top: 1rem;">
+<span class="status-badge not-started">Not Started</span>
+</div>
+:::
+:::
+
+::: {.timeline-item}
+::: {.timeline-content}
+::: {.timeline-title}
+<i class="bi bi-2-circle-fill"></i> Week 2: Bilateral Indices
+:::
+::: {.timeline-description}
+Explore Fisher and Törnqvist price indices. Understand their properties and implementation with real-world datasets.
+:::
+<div style="margin-top: 1rem;">
+<span class="status-badge not-started">Not Started</span>
+</div>
+:::
+:::
+
+::: {.timeline-item}
+::: {.timeline-content}
+::: {.timeline-title}
+<i class="bi bi-3-circle-fill"></i> Week 3: Multilateral Methods
+:::
+::: {.timeline-description}
+Deep dive into GEKS and GEKS-Törnqvist methods for multilateral price comparisons across time and space.
+:::
+<div style="margin-top: 1rem;">
+<span class="status-badge not-started">Not Started</span>
+</div>
+:::
+:::
+
+::: {.timeline-item}
+::: {.timeline-content}
+::: {.timeline-title}
+<i class="bi bi-4-circle-fill"></i> Week 4: Advanced Techniques
+:::
+::: {.timeline-description}
+Learn CCDI (Coordinated Consumer Price Index) and CPD (Country-Product-Dummy) methods, plus rolling and linking strategies.
+:::
+<div style="margin-top: 1rem;">
+<span class="status-badge not-started">Not Started</span>
+</div>
+:::
+:::
+
+:::
+
+## Quick Stats
+
+::: {.content-card}
+
+| Metric | Value |
+|--------|-------|
+| <i class="bi bi-book"></i> Total Lessons | 12 |
+| <i class="bi bi-code"></i> Code Examples | 24 |
+| <i class="bi bi-bar-chart"></i> Visualizations | 16 |
+| <i class="bi bi-pencil"></i> Exercises | 12 |
+| <i class="bi bi-clock"></i> Avg Time/Week | 4 hours |
+
+:::
+
+## Getting Started
+
+::: {.info-box}
+<strong><i class="bi bi-info-circle"></i> Ready to Begin?</strong>
+
+Start with Week 1 to learn the fundamental elementary price indices. Each week builds on the previous one, so we recommend following the order presented.
+
+[<i class="bi bi-arrow-right-circle"></i> Go to Week 1](week1.qmd){.btn .btn-primary}
+:::
+
+## Resources
+
+::: {.content-card}
+
+### <i class="bi bi-download"></i> Downloads
+
+- Sample datasets (CSV format)
+- R code templates
+- Python notebooks
+- Exercise solutions
+
+### <i class="bi bi-question-circle"></i> Need Help?
+
+- Review the code examples
+- Check the documentation
+- Practice with exercises
+- Refer to the references
+
+:::

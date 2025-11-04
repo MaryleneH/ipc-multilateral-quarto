@@ -1,0 +1,439 @@
+---
+title: "Week 1: Elementary Indices"
+format: html
+---
+
+::: {.week-header}
+# Week 1: Elementary Indices
+Master the foundational price indices: Jevons, Dutot, and Carli
+:::
+
+## Overview
+
+::: {.content-card}
+
+This week focuses on the three fundamental elementary price indices used in price statistics. These indices form the building blocks for more complex price index calculations.
+
+**Learning Objectives:**
+- Understand the mathematical formulation of elementary indices
+- Implement Jevons, Dutot, and Carli indices in R and Python
+- Compare their properties and appropriate use cases
+- Apply indices to real-world price data
+
+**Time Required:** ~4 hours
+:::
+
+## 1. Elementary Indices Introduction
+
+::: {.content-card}
+
+### What are Elementary Indices?
+
+Elementary price indices are the simplest form of price indices, calculated without using quantity or expenditure weights. They're typically used at the lowest level of aggregation in price statistics.
+
+::: {.info-box}
+**Key Concept:** Elementary indices compare prices between two time periods using only price relatives, without requiring quantity information.
+:::
+
+### The Three Main Types
+
+1. **Jevons Index** - Geometric mean of price relatives
+2. **Dutot Index** - Ratio of arithmetic means
+3. **Carli Index** - Arithmetic mean of price relatives
+
+:::
+
+## 2. Jevons Index
+
+::: {.content-card}
+
+### Mathematical Formula
+
+The Jevons index is defined as the geometric mean of price relatives:
+
+$$
+I_{\text{Jevons}} = \left(\prod_{i=1}^{n} \frac{p_i^t}{p_i^0}\right)^{1/n}
+$$
+
+Where:
+- $p_i^t$ = price of item $i$ in current period
+- $p_i^0$ = price of item $i$ in base period
+- $n$ = number of items
+
+### Properties
+
+- Satisfies the time reversal test
+- Symmetric treatment of periods
+- Preferred for homogeneous products
+- Sensitive to extreme values in logarithmic form
+
+### R Implementation
+
+```{r}
+#| label: jevons-r
+#| echo: true
+
+# Function to calculate Jevons Index
+jevons_index <- function(prices_current, prices_base) {
+  # Calculate price relatives
+  price_relatives <- prices_current / prices_base
+  
+  # Geometric mean
+  jevons <- exp(mean(log(price_relatives)))
+  
+  return(jevons)
+}
+
+# Example data
+prices_base <- c(10, 20, 15, 25, 30)
+prices_current <- c(12, 22, 16, 28, 33)
+
+# Calculate index
+result <- jevons_index(prices_current, prices_base)
+cat("Jevons Index:", round(result, 4), "\n")
+cat("Percentage change:", round((result - 1) * 100, 2), "%\n")
+
+# Visualization
+library(ggplot2)
+library(dplyr)
+
+data <- data.frame(
+  Item = paste("Item", 1:5),
+  Base = prices_base,
+  Current = prices_current,
+  Change = ((prices_current / prices_base - 1) * 100)
+)
+
+ggplot(data, aes(x = Item, y = Change)) +
+  geom_col(fill = "#2563eb", alpha = 0.8) +
+  geom_hline(yintercept = (result - 1) * 100, 
+             linetype = "dashed", color = "#f59e0b", size = 1) +
+  labs(
+    title = "Price Changes by Item",
+    subtitle = "Dashed line shows Jevons Index average",
+    y = "Price Change (%)",
+    x = "Item"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    panel.grid.minor = element_blank()
+  )
+```
+
+### Python Implementation
+
+```{python}
+#| label: jevons-python
+#| echo: true
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def jevons_index(prices_current, prices_base):
+    """Calculate Jevons price index"""
+    price_relatives = prices_current / prices_base
+    jevons = np.exp(np.mean(np.log(price_relatives)))
+    return jevons
+
+# Example data
+prices_base = np.array([10, 20, 15, 25, 30])
+prices_current = np.array([12, 22, 16, 28, 33])
+
+# Calculate index
+result = jevons_index(prices_current, prices_base)
+print(f"Jevons Index: {result:.4f}")
+print(f"Percentage change: {(result - 1) * 100:.2f}%")
+
+# Visualization
+data = pd.DataFrame({
+    'Item': [f'Item {i}' for i in range(1, 6)],
+    'Base': prices_base,
+    'Current': prices_current
+})
+data['Change'] = (data['Current'] / data['Base'] - 1) * 100
+
+plt.figure(figsize=(10, 6))
+plt.bar(data['Item'], data['Change'], color='#2563eb', alpha=0.8)
+plt.axhline(y=(result - 1) * 100, color='#f59e0b', 
+            linestyle='--', linewidth=2, label='Jevons Index')
+plt.title('Price Changes by Item', fontsize=14, fontweight='bold')
+plt.ylabel('Price Change (%)')
+plt.xlabel('Item')
+plt.legend()
+plt.grid(axis='y', alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+## 3. Dutot Index
+
+::: {.content-card}
+
+### Mathematical Formula
+
+The Dutot index is the ratio of arithmetic means of prices:
+
+$$
+I_{\text{Dutot}} = \frac{\frac{1}{n}\sum_{i=1}^{n} p_i^t}{\frac{1}{n}\sum_{i=1}^{n} p_i^0} = \frac{\sum_{i=1}^{n} p_i^t}{\sum_{i=1}^{n} p_i^0}
+$$
+
+### Properties
+
+- Simple to calculate and interpret
+- Assumes items are measured in comparable units
+- Sensitive to units of measurement
+- Best for homogeneous items with similar price levels
+
+### R Implementation
+
+```{r}
+#| label: dutot-r
+#| echo: true
+
+# Function to calculate Dutot Index
+dutot_index <- function(prices_current, prices_base) {
+  dutot <- mean(prices_current) / mean(prices_base)
+  return(dutot)
+}
+
+# Calculate index
+result <- dutot_index(prices_current, prices_base)
+cat("Dutot Index:", round(result, 4), "\n")
+cat("Percentage change:", round((result - 1) * 100, 2), "%\n")
+
+# Compare all three indices
+indices <- data.frame(
+  Index = c("Jevons", "Dutot", "Carli"),
+  Value = c(
+    jevons_index(prices_current, prices_base),
+    dutot_index(prices_current, prices_base),
+    NA  # Carli to be calculated next
+  )
+)
+
+# We'll complete this after defining Carli
+```
+
+### Python Implementation
+
+```{python}
+#| label: dutot-python
+#| echo: true
+
+def dutot_index(prices_current, prices_base):
+    """Calculate Dutot price index"""
+    dutot = np.mean(prices_current) / np.mean(prices_base)
+    return dutot
+
+# Calculate index
+result = dutot_index(prices_current, prices_base)
+print(f"Dutot Index: {result:.4f}")
+print(f"Percentage change: {(result - 1) * 100:.2f}%")
+```
+
+:::
+
+## 4. Carli Index
+
+::: {.content-card}
+
+### Mathematical Formula
+
+The Carli index is the arithmetic mean of price relatives:
+
+$$
+I_{\text{Carli}} = \frac{1}{n}\sum_{i=1}^{n} \frac{p_i^t}{p_i^0}
+$$
+
+### Properties
+
+- Arithmetic mean of individual price changes
+- Has an upward bias (fails time reversal test)
+- Gives equal weight to all price relatives
+- Less commonly used due to bias issues
+
+### R Implementation
+
+```{r}
+#| label: carli-r
+#| echo: true
+
+# Function to calculate Carli Index
+carli_index <- function(prices_current, prices_base) {
+  price_relatives <- prices_current / prices_base
+  carli <- mean(price_relatives)
+  return(carli)
+}
+
+# Calculate index
+result <- carli_index(prices_current, prices_base)
+cat("Carli Index:", round(result, 4), "\n")
+cat("Percentage change:", round((result - 1) * 100, 2), "%\n")
+
+# Compare all three indices
+indices <- data.frame(
+  Index = c("Jevons", "Dutot", "Carli"),
+  Value = c(
+    jevons_index(prices_current, prices_base),
+    dutot_index(prices_current, prices_base),
+    carli_index(prices_current, prices_base)
+  )
+)
+
+indices$Change_Percent <- (indices$Value - 1) * 100
+
+print(indices)
+
+# Visualization
+ggplot(indices, aes(x = Index, y = Change_Percent, fill = Index)) +
+  geom_col(alpha = 0.8) +
+  geom_text(aes(label = paste0(round(Change_Percent, 2), "%")), 
+            vjust = -0.5, fontface = "bold") +
+  scale_fill_manual(values = c("#2563eb", "#3b82f6", "#60a5fa")) +
+  labs(
+    title = "Comparison of Elementary Indices",
+    subtitle = "Price change from base to current period",
+    y = "Percentage Change (%)",
+    x = "Index Type"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "none",
+    panel.grid.minor = element_blank()
+  )
+```
+
+### Python Implementation
+
+```{python}
+#| label: carli-python
+#| echo: true
+
+def carli_index(prices_current, prices_base):
+    """Calculate Carli price index"""
+    price_relatives = prices_current / prices_base
+    carli = np.mean(price_relatives)
+    return carli
+
+# Calculate index
+result = carli_index(prices_current, prices_base)
+print(f"Carli Index: {result:.4f}")
+print(f"Percentage change: {(result - 1) * 100:.2f}%")
+
+# Compare all indices
+indices_data = {
+    'Index': ['Jevons', 'Dutot', 'Carli'],
+    'Value': [
+        jevons_index(prices_current, prices_base),
+        dutot_index(prices_current, prices_base),
+        carli_index(prices_current, prices_base)
+    ]
+}
+
+indices_df = pd.DataFrame(indices_data)
+indices_df['Change_Percent'] = (indices_df['Value'] - 1) * 100
+
+print("\nComparison of Elementary Indices:")
+print(indices_df)
+
+# Visualization
+plt.figure(figsize=(10, 6))
+colors = ['#2563eb', '#3b82f6', '#60a5fa']
+bars = plt.bar(indices_df['Index'], indices_df['Change_Percent'], 
+               color=colors, alpha=0.8)
+
+for i, bar in enumerate(bars):
+    height = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2., height,
+             f'{height:.2f}%', ha='center', va='bottom', 
+             fontweight='bold')
+
+plt.title('Comparison of Elementary Indices', fontsize=14, fontweight='bold')
+plt.ylabel('Percentage Change (%)')
+plt.xlabel('Index Type')
+plt.grid(axis='y', alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+## 5. Guided Exercise
+
+::: {.exercise-box}
+### <i class="bi bi-pencil-square"></i> Exercise 1: Calculate Your Own Indices
+
+Using the following price data for 6 products over two months:
+
+**January (Base):** 5.00, 12.50, 8.00, 15.00, 20.00, 10.00  
+**February (Current):** 5.50, 13.00, 8.50, 16.00, 22.00, 10.50
+
+**Tasks:**
+1. Calculate the Jevons, Dutot, and Carli indices
+2. Which index shows the highest price change?
+3. Create a visualization comparing the three indices
+4. Explain why the indices might differ
+
+**Hints:**
+- Use the functions we've defined above
+- Think about the mathematical properties of each index
+- Consider the impact of different price changes across items
+:::
+
+::: {.exercise-box}
+### <i class="bi bi-pencil-square"></i> Exercise 2: Time Series Analysis
+
+Create a time series of prices for 3 items over 6 months and:
+
+1. Calculate monthly Jevons indices
+2. Create a chain index (each month compared to the previous)
+3. Plot the index over time
+4. Calculate the cumulative price change
+
+**Extension:** Compare chain vs. fixed-base indices
+:::
+
+## 6. Key Takeaways
+
+::: {.info-box .success}
+**<i class="bi bi-check-circle"></i> What You've Learned:**
+
+- **Jevons Index**: Geometric mean, satisfies time reversal test, preferred for many applications
+- **Dutot Index**: Ratio of means, simple but unit-dependent
+- **Carli Index**: Arithmetic mean, has upward bias, use with caution
+- All three indices use only prices (no quantities)
+- Choice depends on data characteristics and desired properties
+:::
+
+## Next Steps
+
+::: {.content-card}
+
+### Ready for Week 2?
+
+Now that you understand elementary indices, you're ready to learn about weighted bilateral indices that incorporate quantity information.
+
+**Week 2 Topics:**
+- Fisher Price Index
+- Törnqvist Price Index
+- Axiomatic properties
+- Superlative indices
+
+[<i class="bi bi-arrow-right-circle"></i> Continue to Week 2](week2.qmd){.btn .btn-primary}
+
+:::
+
+## References
+
+::: {.content-card}
+
+- ILO, IMF, OECD, Eurostat, UN, World Bank (2020). *Consumer Price Index Manual: Concepts and Methods*
+- Diewert, W.E. (1995). "Axiomatic and Economic Approaches to Elementary Price Indexes"
+- ILO (2009). *Practical Guide to Producing Consumer Price Indices*
+
+:::

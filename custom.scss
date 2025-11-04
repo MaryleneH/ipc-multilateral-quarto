@@ -1,0 +1,46 @@
+/*-- scss:defaults --*/
+
+// Soft blue color palette
+$primary: #2563eb;
+$secondary: #60a5fa;
+$light-blue: #dbeafe;
+$accent: #3b82f6;
+$text-primary: #1e293b;
+$text-secondary: #64748b;
+$background: #f8fafc;
+$card-bg: #ffffff;
+$border-color: #e2e8f0;
+
+// Inter font
+$font-family-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+/*-- scss:rules --*/
+
+body {
+  font-family: $font-family-sans-serif;
+  background-color: $background;
+  color: $text-primary;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.navbar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+code {
+  background-color: $light-blue;
+  color: $primary;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+pre {
+  border-radius: 12px;
+  border: 1px solid $border-color;
+}
