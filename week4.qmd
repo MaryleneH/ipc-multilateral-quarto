@@ -25,11 +25,12 @@ Master CCDI, CPD methods, and rolling/linking strategies
 This final week covers advanced multilateral methods and practical implementation strategies for maintaining long-run price indices.
 
 **Learning Objectives:**
-- Understand CCDI (Coordinated Consumer Price Index) framework
-- Implement CPD (Country-Product-Dummy) regression method
-- Master rolling window and linking strategies
-- Compare different extension methods
-- Apply best practices for real-world implementation
+
+-    Understand CCDI (Coordinated Consumer Price Index) framework
+-    Implement CPD (Country-Product-Dummy) regression method
+-    Master rolling window and linking strategies
+-    Compare different extension methods
+-    Apply best practices for real-world implementation
 
 **Time Required:** ~4 hours
 :::
