@@ -1,6 +1,6 @@
-# IPC Multilateral Learning Dashboard
+# CPI Multilateral Learning Dashboard
 
-An elegant, interactive Quarto-based learning application for mastering IPC (International Price Comparison) multilateral price index methods.
+An elegant, interactive Quarto-based learning application for mastering CPI multilateral price index methods.
 
 ## 🎯 Overview
 
