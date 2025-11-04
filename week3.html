@@ -255,7 +255,14 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
 <div class="content-card">
 <p>This week explores multilateral index methods that ensure transitivity when comparing prices across multiple time periods or regions simultaneously.</p>
-<p><strong>Learning Objectives:</strong> - Understand the concept of transitivity in price indices - Implement GEKS (Gini-Éltető-Köves-Szulc) method - Master GEKS-Törnqvist (GEKS-T) approach - Apply multilateral methods to real-world data - Understand the window length trade-off</p>
+<p><strong>Learning Objectives:</strong></p>
+<ul>
+<li>Understand the concept of transitivity in price indices</li>
+<li>Implement GEKS (Gini-Éltető-Köves-Szulc) method</li>
+<li>Master GEKS-Törnqvist (GEKS-T) approach</li>
+<li>Apply multilateral methods to real-world data</li>
+<li>Understand the window length trade-off</li>
+</ul>
 <p><strong>Time Required:</strong> ~4 hours</p>
 </div>
 </section>
@@ -552,7 +559,11 @@ P_{GEKS}(0,t) = \left[\prod_{j=0}^{T} \frac{P_B(0,j)}{P_B(t,j)}\right]^{1/(T+1)}
 <div class="content-card">
 <section id="why-geks-törnqvist" class="level3">
 <h3 class="anchored" data-anchor-id="why-geks-törnqvist">Why GEKS-Törnqvist?</h3>
-<p>GEKS-T combines the best of both worlds: - <strong>Törnqvist</strong> bilateral index (superlative, widely used) - <strong>GEKS</strong> method (ensures transitivity)</p>
+<p>GEKS-T combines the best of both worlds:</p>
+<ul>
+<li><strong>Törnqvist</strong> bilateral index (superlative, widely used)</li>
+<li><strong>GEKS</strong> method (ensures transitivity)</li>
+</ul>
 <p>This is the recommended method by many statistical agencies for CPI calculations.</p>
 </section>
 <section id="r-implementation-1" class="level3">
