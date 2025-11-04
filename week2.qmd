@@ -3,6 +3,16 @@ title: "Week 2: Fisher & Törnqvist Indices"
 format: html
 ---
 
+
+```{r}
+#| label: setup-reticulate
+#| include: false
+#| echo: false
+library(reticulate)
+use_virtualenv("r-reticulate", required = TRUE)  # ou use_condaenv("r-reticulate", required=TRUE)
+py_config()  # pour vérifier le Python actif
+```
+
 ::: {.week-header}
 # Week 2: Bilateral Indices
 Master Fisher and Törnqvist price indices with quantity weights

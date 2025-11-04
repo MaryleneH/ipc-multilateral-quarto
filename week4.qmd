@@ -3,6 +3,16 @@ title: "Week 4: CCDI, CPD & Linking"
 format: html
 ---
 
+```{r}
+#| label: setup-reticulate
+#| include: false
+#| echo: false
+library(reticulate)
+use_virtualenv("r-reticulate", required = TRUE)  # ou use_condaenv("r-reticulate", required=TRUE)
+py_config()  # pour vérifier le Python actif
+```
+
+
 ::: {.week-header}
 # Week 4: Advanced Techniques
 Master CCDI, CPD methods, and rolling/linking strategies
@@ -401,177 +411,92 @@ Where:
 #| echo: true
 
 # Prepare data in long format
-cpd_data <- data.frame()
+library(dplyr)
+library(tidyr)
+library(ggplot2)
 
-for (t in 1:6) {  # Use first 6 periods
-  for (i in 1:n_items) {
-    cpd_data <- rbind(cpd_data, data.frame(
-      period = t,
-      item = i,
-      price = price_data[i, t],
-      quantity = quantity_data[i, t],
-      log_price = log(price_data[i, t])
-    ))
-  }
+# --- Données longues (6 périodes) ---
+stopifnot(exists("n_items"), exists("price_data"), exists("quantity_data"))
+Tt <- 6
+cpd_data <- tidyr::expand_grid(
+  period = 1:Tt,
+  item   = 1:n_items
+) |>
+  mutate(
+    price     = price_data[cbind(item, period)],
+    quantity  = quantity_data[cbind(item, period)],
+    log_price = log(price),
+    period_factor = factor(period, levels = 1:Tt),
+    item_factor   = factor(item,   levels = 1:n_items)
+  )
+
+# --- Régression CPD : intercept + dummies (période 1 = base) ---
+cpd_model <- lm(log_price ~ item_factor + period_factor, data = cpd_data)
+
+# Effets de période (coef relatifs à la période 1 = 0)
+lev  <- levels(cpd_data$period_factor)
+b    <- coef(cpd_model)
+# noms attendus "period_factor2"... selon R
+nm   <- paste0("period_factor", lev[-1])
+beta <- c(`1` = 0, setNames(b[nm], lev[-1]))
+# Sécurise longueurs/NA
+beta[is.na(beta)] <- 0
+beta <- beta[as.character(1:Tt)]
+cpd_indices <- exp(beta - beta[1])  # normalisé: période 1 = 1
+
+# --- Bilatéral Fisher et GEKS sur 6 périodes ---
+fisher_bilateral <- function(p_s, p_j, q_s, q_j){
+  L <- sum(p_j * q_s) / sum(p_s * q_s)
+  P <- sum(p_j * q_j) / sum(p_s * q_j)
+  sqrt(L * P)
 }
 
-cpd_data$period_factor <- as.factor(cpd_data$period)
-cpd_data$item_factor <- as.factor(cpd_data$item)
-
-# Run CPD regression
-cpd_model <- lm(log_price ~ item_factor + period_factor - 1, 
-                data = cpd_data)
-
-# Extract time effects (period coefficients)
-period_coefs <- coef(cpd_model)[grep("period_factor", names(coef(cpd_model)))]
-
-# Convert to index (exponential of coefficients)
-cpd_indices <- exp(period_coefs - period_coefs[1])
-
-# Compare with other methods
-geks_6 <- numeric(6)
-geks_6[1] <- 1
-for (t in 2:6) {
-  bilateral_matrix <- matrix(1, 6, 6)
-  for (s in 1:6) {
-    for (j in 1:6) {
-      if (s != j) {
-        bilateral_matrix[s, j] <- fisher_bilateral(
-          price_data[, s], price_data[, j],
-          quantity_data[, s], quantity_data[, j]
-        )
-      }
+# matrice bilatérale une fois pour toutes
+B <- matrix(1, Tt, Tt)
+for(s in 1:Tt){
+  for(j in 1:Tt){
+    if(s != j){
+      B[s, j] <- fisher_bilateral(
+        price_data[, s], price_data[, j],
+        quantity_data[, s], quantity_data[, j]
+      )
     }
   }
-  
-  product <- 1
-  for (j in 1:6) {
-    product <- product * (bilateral_matrix[1, j] / bilateral_matrix[t, j])
-  }
-  geks_6[t] <- product^(1/6)
 }
 
-comparison_methods <- data.frame(
-  Period = 1:6,
-  CPD = cpd_indices,
-  GEKS = geks_6
-)
+# GEKS(t) = exp(mean_k log(B[t,k]) - mean_k log(B[1,k]))
+geks_6 <- sapply(1:Tt, function(t){
+  exp(mean(log(B[t, ])) - mean(log(B[1, ])))
+})
 
+# --- Comparaison ---
+comparison_methods <- data.frame(
+  Period = 1:Tt,
+  CPD    = as.numeric(cpd_indices),
+  GEKS   = as.numeric(geks_6)
+)
 print(comparison_methods)
 
-# Visualization
-comparison_methods_long <- comparison_methods %>%
+# --- Viz ---
+comparison_methods_long <- comparison_methods |>
   pivot_longer(cols = -Period, names_to = "Method", values_to = "Index")
 
-ggplot(comparison_methods_long, aes(x = Period, y = Index, 
-                                    color = Method, group = Method)) +
-  geom_line(linewidth = 1.5) +
-  geom_point(size = 4) +
+ggplot(comparison_methods_long, aes(Period, Index, color = Method, group = Method)) +
+  geom_line(linewidth = 1.2) + geom_point(size = 3) +
   scale_color_manual(values = c("CPD" = "#8b5cf6", "GEKS" = "#2563eb")) +
-  labs(
-    title = "CPD vs GEKS Method",
-    subtitle = "Regression-based vs geometric mean approach",
-    y = "Price Index (Period 1 = 1.00)",
-    x = "Period"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    legend.position = "bottom",
-    legend.title = element_blank()
-  )
+  labs(title = "CPD vs GEKS", subtitle = "Effets période (CPD) vs GEKS multilatéral",
+       y = "Indice (Période 1 = 1.00)", x = "Période") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom", legend.title = element_blank())
 
 # Model diagnostics
 cat("\nCPD Model R-squared:", round(summary(cpd_model)$r.squared, 4), "\n")
+
+
 ```
 
 ### Python Implementation
 
-```{python}
-#| label: cpd-python
-#| echo: true
-
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import LabelEncoder
-import statsmodels.api as sm
-
-# Prepare data in long format
-cpd_list = []
-for t in range(6):
-    for i in range(n_items):
-        cpd_list.append({
-            'period': t,
-            'item': i,
-            'price': price_data[i, t],
-            'log_price': np.log(price_data[i, t])
-        })
-
-cpd_df = pd.DataFrame(cpd_list)
-
-# Create dummy variables
-period_dummies = pd.get_dummies(cpd_df['period'], prefix='period')
-item_dummies = pd.get_dummies(cpd_df['item'], prefix='item')
-
-# Combine predictors (drop one column to avoid collinearity)
-X = pd.concat([item_dummies.iloc[:, 1:], period_dummies], axis=1)
-y = cpd_df['log_price']
-
-# Fit model
-model = sm.OLS(y, X)
-results = model.fit()
-
-# Extract period coefficients
-period_cols = [col for col in X.columns if 'period' in col]
-period_coefs = np.zeros(6)
-period_coefs[0] = 0  # Reference period
-for i, col in enumerate(period_cols, 1):
-    period_coefs[i] = results.params[col]
-
-# Convert to price index
-cpd_indices = np.exp(period_coefs - period_coefs[0])
-
-print("\nCPD Indices:")
-for i, idx in enumerate(cpd_indices, 1):
-    print(f"Period {i}: {idx:.4f}")
-
-print(f"\nR-squared: {results.rsquared:.4f}")
-
-# Compare with GEKS
-geks_6 = np.zeros(6)
-geks_6[0] = 1.0
-
-for t in range(1, 6):
-    bilateral_matrix = np.ones((6, 6))
-    for s in range(6):
-        for j in range(6):
-            if s != j:
-                bilateral_matrix[s, j] = fisher_bilateral(
-                    price_data[:, s], price_data[:, j],
-                    quantity_data[:, s], quantity_data[:, j]
-                )
-    
-    product = 1.0
-    for j in range(6):
-        product *= bilateral_matrix[0, j] / bilateral_matrix[t, j]
-    geks_6[t] = product ** (1/6)
-
-# Visualization
-plt.figure(figsize=(10, 6))
-periods = np.arange(1, 7)
-
-plt.plot(periods, cpd_indices, 'o-', color='#8b5cf6', 
-         linewidth=2, markersize=10, label='CPD')
-plt.plot(periods, geks_6, 's-', color='#2563eb', 
-         linewidth=2, markersize=10, label='GEKS')
-
-plt.xlabel('Period', fontsize=12)
-plt.ylabel('Price Index (Period 1 = 1.00)', fontsize=12)
-plt.title('CPD vs GEKS Method', fontsize=14, fontweight='bold')
-plt.legend(fontsize=11)
-plt.grid(alpha=0.3)
-plt.tight_layout()
-plt.show()
-```
 
 :::
 
