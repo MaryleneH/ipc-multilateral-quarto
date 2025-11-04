@@ -25,10 +25,11 @@ Master Fisher and Törnqvist price indices with quantity weights
 This week explores bilateral price indices that incorporate quantity or expenditure weights. These "superlative" indices provide more accurate measures of price change.
 
 **Learning Objectives:**
-- Understand the role of quantity weights in price indices
-- Implement Fisher and Törnqvist indices
-- Learn about axiomatic and economic approaches
-- Compare properties of superlative indices
+
+-    Understand the role of quantity weights in price indices
+-    Implement Fisher and Törnqvist indices
+-    Learn about axiomatic and economic approaches
+-    Compare properties of superlative indices
 
 **Time Required:** ~4 hours
 :::

@@ -25,11 +25,12 @@ Master GEKS and GEKS-Törnqvist for multilateral price comparisons
 This week explores multilateral index methods that ensure transitivity when comparing prices across multiple time periods or regions simultaneously.
 
 **Learning Objectives:**
-- Understand the concept of transitivity in price indices
-- Implement GEKS (Gini-Éltető-Köves-Szulc) method
-- Master GEKS-Törnqvist (GEKS-T) approach
-- Apply multilateral methods to real-world data
-- Understand the window length trade-off
+
+-    Understand the concept of transitivity in price indices
+-    Implement GEKS (Gini-Éltető-Köves-Szulc) method
+-    Master GEKS-Törnqvist (GEKS-T) approach
+-    Apply multilateral methods to real-world data
+-    Understand the window length trade-off
 
 **Time Required:** ~4 hours
 :::
@@ -311,6 +312,7 @@ plt.show()
 ### Why GEKS-Törnqvist?
 
 GEKS-T combines the best of both worlds:
+
 - **Törnqvist** bilateral index (superlative, widely used)
 - **GEKS** method (ensures transitivity)
 
