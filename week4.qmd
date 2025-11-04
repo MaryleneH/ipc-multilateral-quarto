@@ -501,68 +501,56 @@ cat("\nCPD Model R-squared:", round(summary(cpd_model)$r.squared, 4), "\n")
 #| label: cpd-python
 #| echo: true
 
-import numpy as np, pandas as pd, statsmodels.api as sm
+import numpy as np, pandas as pd
+import statsmodels.formula.api as smf
 import matplotlib.pyplot as plt
 
-# --- Coercitions robustes depuis R -> Python ---
-def as_array(x):
-    # Accepte numpy array, pandas DataFrame/Series, ou liste imbriquée
+# --- coercitions robustes depuis R ---
+def as_float_array(x):
     if isinstance(x, np.ndarray):
-        return x
-    if hasattr(x, "values"):  # pandas
-        return x.values
-    return np.asarray(x)
+        return x.astype(float, copy=False)
+    if hasattr(x, "values"):
+        return x.values.astype(float, copy=False)
+    return np.asarray(x, dtype=float)
 
-P = as_array(price_data)
-Q = as_array(quantity_data)
-
-# S'assurer 2D
-if P.ndim == 1:
-    P = P.reshape(1, -1)
-if Q.ndim == 1:
-    Q = Q.reshape(1, -1)
-
+P = as_float_array(price_data)   # (n_items x T)
+Q = as_float_array(quantity_data)
+if P.ndim == 1: P = P.reshape(1, -1)
+if Q.ndim == 1: Q = Q.reshape(1, -1)
 n_items, Tt = P.shape
-assert Tt >= 2, "Il faut au moins 2 périodes"
-assert Q.shape == P.shape, "quantity_data doit avoir la même forme que price_data"
+assert Q.shape == P.shape and Tt >= 2
 
-# ---------- Données longues ----------
+# --------- données longues, 100% numériques ----------
 cpd_df = pd.DataFrame({
-    "period": np.repeat(np.arange(Tt), n_items),
-    "item":   np.tile(np.arange(n_items), Tt)
+    "period": np.repeat(np.arange(Tt), n_items).astype(int),
+    "item":   np.tile(np.arange(n_items), Tt).astype(int),
 })
 cpd_df["price"] = P[cpd_df["item"], cpd_df["period"]]
 cpd_df["log_price"] = np.log(cpd_df["price"])
+# nettoyage défensif
+cpd_df = cpd_df.replace([np.inf, -np.inf], np.nan).dropna(subset=["log_price"])
 
-# ---------- CPD : intercept + dummies (base = période 0, item 0) ----------
-period_cat = pd.Categorical(cpd_df["period"], categories=range(Tt), ordered=True)
-item_cat   = pd.Categorical(cpd_df["item"],   categories=range(n_items), ordered=True)
-period_d   = pd.get_dummies(period_cat, prefix="period", drop_first=True)
-item_d     = pd.get_dummies(item_cat,   prefix="item",   drop_first=True)
+# --------- CPD via formule (gère les dummies proprement) ----------
+# Référence = première modalité (item=0, period=0)
+model = smf.ols("log_price ~ C(item) + C(period)", data=cpd_df).fit()
 
-X = pd.concat([item_d, period_d], axis=1)
-X = sm.add_constant(X)  # intercept
-y = cpd_df["log_price"]
-
-model = sm.OLS(y, X).fit()
-
-# Effets de période (référence = 0)
-period_cols = sorted([c for c in X.columns if c.startswith("period_")],
-                     key=lambda c: int(c.split("_")[1]))
-beta = np.zeros(Tt)  # beta[0] = 0
-for k, col in enumerate(period_cols, start=1):
-    beta[k] = float(model.params.get(col, 0.0))
+# reconstruire les effets de période (beta[0]=0)
+beta = np.zeros(Tt)
+period_terms = [p for p in model.params.index if p.startswith("C(period)[T.")]
+# trier par numéro
+period_terms.sort(key=lambda s: int(s.split("T.")[1].rstrip("]")))
+for k, term in enumerate(period_terms, start=1):
+    beta[k] = float(model.params.get(term, 0.0))
 cpd_indices = np.exp(beta - beta[0])
 
-print("Forme P (items x périodes):", P.shape)
-print("Indices CPD:", np.round(cpd_indices, 6))
 print("R-squared:", round(model.rsquared, 4))
+print("CPD indices:", np.round(cpd_indices, 6))
 
-# ---------- Bilatéral Fisher + GEKS (général pour Tt périodes) ----------
+# --------- GEKS général ----------
 def fisher_bilateral(p_s, p_j, q_s, q_j):
-    L = (p_j * q_s).sum() / (p_s * q_s).sum()
-    P_ = (p_j * q_j).sum() / (p_s * q_j).sum()
-    return np.sqrt(L * P_)
+    L = (p_j*q_s).sum()/(p_s*q_s).sum()
+    P_ = (p_j*q_j).sum()/(p_s*q_j).sum()
+    return np.sqrt(L*P_)
 
 B = np.ones((Tt, Tt))
 for s in range(Tt):
@@ -570,10 +558,9 @@ for s in range(Tt):
         if s != j:
             B[s, j] = fisher_bilateral(P[:, s], P[:, j], Q[:, s], Q[:, j])
 
-# GEKS(t) = exp( mean_k log B[t,k] - mean_k log B[0,k] )
 geks = np.exp(np.log(B).mean(axis=1) - np.log(B[0]).mean())
 
-# ---------- Viz ----------
+# --------- plot ----------
 periods = np.arange(1, Tt+1)
 plt.figure(figsize=(9,5))
 plt.plot(periods, cpd_indices, 'o-', linewidth=2, markersize=8, label="CPD")

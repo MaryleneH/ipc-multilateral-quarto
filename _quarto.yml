@@ -3,7 +3,7 @@ project:
   output-dir: _site
 
 website:
-  title: "IPC Multilateral Learning"
+  title: "CPI Multilateral Learning"
   favicon: assets/favicon.png
   navbar:
     background: "#2563eb"
