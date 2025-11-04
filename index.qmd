@@ -5,7 +5,7 @@ format: html
 
 ::: {.week-header}
 # Learning Dashboard
-Welcome to your IPC Multilateral Price Index Learning Journey
+Welcome to your CPI Multilateral Price Index Learning Journey
 :::
 
 ## Your Progress
