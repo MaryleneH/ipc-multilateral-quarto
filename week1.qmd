@@ -25,10 +25,11 @@ Master the foundational price indices: Jevons, Dutot, and Carli
 This week focuses on the three fundamental elementary price indices used in price statistics. These indices form the building blocks for more complex price index calculations.
 
 **Learning Objectives:**
-- Understand the mathematical formulation of elementary indices
-- Implement Jevons, Dutot, and Carli indices in R and Python
-- Compare their properties and appropriate use cases
-- Apply indices to real-world price data
+
+-    Understand the mathematical formulation of elementary indices
+-    Implement Jevons, Dutot, and Carli indices in R and Python
+-    Compare their properties and appropriate use cases
+-    Apply indices to real-world price data
 
 **Time Required:** ~4 hours
 :::
