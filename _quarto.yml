@@ -1,0 +1,51 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "IPC Multilateral Learning"
+  favicon: assets/favicon.png
+  navbar:
+    background: "#2563eb"
+    foreground: white
+    left:
+      - text: "Dashboard"
+        icon: speedometer2
+        href: index.qmd
+      - text: "Week 1"
+        icon: calendar-week
+        href: week1.qmd
+      - text: "Week 2"
+        icon: calendar-week
+        href: week2.qmd
+      - text: "Week 3"
+        icon: calendar-week
+        href: week3.qmd
+      - text: "Week 4"
+        icon: calendar-week
+        href: week4.qmd
+
+format:
+  html:
+    theme: 
+      - cosmo
+      - custom.scss
+    css: styles.css
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    page-layout: full
+    grid:
+      sidebar-width: 250px
+      body-width: 1200px
+    include-in-header:
+      - text: |
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+execute:
+  echo: true
+  warning: false
+  message: false

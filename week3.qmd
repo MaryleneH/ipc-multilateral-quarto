@@ -1,0 +1,631 @@
+---
+title: "Week 3: GEKS & GEKS-T Methods"
+format: html
+---
+
+::: {.week-header}
+# Week 3: Multilateral Methods
+Master GEKS and GEKS-Törnqvist for multilateral price comparisons
+:::
+
+## Overview
+
+::: {.content-card}
+
+This week explores multilateral index methods that ensure transitivity when comparing prices across multiple time periods or regions simultaneously.
+
+**Learning Objectives:**
+- Understand the concept of transitivity in price indices
+- Implement GEKS (Gini-Éltető-Köves-Szulc) method
+- Master GEKS-Törnqvist (GEKS-T) approach
+- Apply multilateral methods to real-world data
+- Understand the window length trade-off
+
+**Time Required:** ~4 hours
+:::
+
+## 1. Introduction to Multilateral Methods
+
+::: {.content-card}
+
+### The Transitivity Problem
+
+Bilateral indices can fail the **transitivity test**:
+
+$$
+P(0,2) \neq P(0,1) \times P(1,2)
+$$
+
+This means chaining bilateral indices can lead to **chain drift**.
+
+::: {.info-box}
+**Key Concept:** Multilateral methods ensure transitivity by comparing all time periods (or regions) simultaneously, making the index from A to C equal to the product of indices from A to B and B to C.
+:::
+
+### Why Multilateral Methods?
+
+- **Transitivity**: Ensure consistent comparisons
+- **Characteristicity**: Use all available data
+- **Stability**: Reduce revision issues
+- **International**: Compare across countries and time
+
+:::
+
+## 2. GEKS Method
+
+::: {.content-card}
+
+### Mathematical Formula
+
+The GEKS method combines multiple bilateral comparisons. For comparing periods 0 and t using data from periods 0 to T:
+
+$$
+P_{GEKS}(0,t) = \left[\prod_{j=0}^{T} \frac{P_B(0,j)}{P_B(t,j)}\right]^{1/(T+1)}
+$$
+
+Where:
+- $P_B(s,t)$ = bilateral index between periods s and t
+- T = number of periods in the comparison window
+- The product is taken over all bridge periods j
+
+### Properties
+
+- **Transitive by construction**
+- Uses all available information
+- Symmetric treatment of all periods
+- Can use any bilateral index as base (Fisher, Törnqvist, etc.)
+
+### R Implementation
+
+```{r}
+#| label: geks-r
+#| echo: true
+
+library(tidyverse)
+
+# Generate sample data for 6 time periods
+set.seed(123)
+n_periods <- 6
+n_items <- 5
+
+# Create price and quantity data
+price_data <- matrix(NA, n_items, n_periods)
+quantity_data <- matrix(NA, n_items, n_periods)
+
+# Initial prices and quantities
+price_data[, 1] <- c(10, 20, 15, 25, 30)
+quantity_data[, 1] <- c(100, 50, 80, 40, 30)
+
+# Simulate price and quantity changes
+for (t in 2:n_periods) {
+  price_data[, t] <- price_data[, t-1] * runif(n_items, 0.98, 1.12)
+  quantity_data[, t] <- quantity_data[, t-1] * runif(n_items, 0.95, 1.05)
+}
+
+# Fisher index function (from Week 2)
+fisher_bilateral <- function(p_s, p_t, q_s, q_t) {
+  laspeyres <- sum(p_t * q_s) / sum(p_s * q_s)
+  paasche <- sum(p_t * q_t) / sum(p_s * q_t)
+  return(sqrt(laspeyres * paasche))
+}
+
+# GEKS index function
+geks_index <- function(price_data, quantity_data, period_0, period_t) {
+  n_periods <- ncol(price_data)
+  
+  # Calculate all bilateral indices
+  bilateral_matrix <- matrix(1, n_periods, n_periods)
+  
+  for (s in 1:n_periods) {
+    for (t in 1:n_periods) {
+      if (s != t) {
+        bilateral_matrix[s, t] <- fisher_bilateral(
+          price_data[, s], price_data[, t],
+          quantity_data[, s], quantity_data[, t]
+        )
+      }
+    }
+  }
+  
+  # Calculate GEKS index
+  product <- 1
+  for (j in 1:n_periods) {
+    product <- product * (bilateral_matrix[period_0, j] / 
+                          bilateral_matrix[period_t, j])
+  }
+  
+  geks <- product^(1/n_periods)
+  return(geks)
+}
+
+# Calculate GEKS indices for all periods relative to period 1
+geks_indices <- numeric(n_periods)
+geks_indices[1] <- 1  # Base period
+
+for (t in 2:n_periods) {
+  geks_indices[t] <- geks_index(price_data, quantity_data, 1, t)
+}
+
+# Also calculate chain Fisher for comparison
+chain_fisher <- numeric(n_periods)
+chain_fisher[1] <- 1
+
+for (t in 2:n_periods) {
+  fisher <- fisher_bilateral(
+    price_data[, t-1], price_data[, t],
+    quantity_data[, t-1], quantity_data[, t]
+  )
+  chain_fisher[t] <- chain_fisher[t-1] * fisher
+}
+
+# Create comparison data frame
+comparison <- data.frame(
+  Period = 1:n_periods,
+  GEKS = geks_indices,
+  Chain_Fisher = chain_fisher
+)
+
+print(comparison)
+
+# Visualization
+comparison_long <- comparison %>%
+  pivot_longer(cols = c(GEKS, Chain_Fisher), 
+               names_to = "Method", values_to = "Index")
+
+ggplot(comparison_long, aes(x = Period, y = Index, 
+                            color = Method, group = Method)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("GEKS" = "#2563eb", 
+                                 "Chain_Fisher" = "#f59e0b")) +
+  labs(
+    title = "GEKS vs Chain Fisher Index",
+    subtitle = "GEKS ensures transitivity across all periods",
+    y = "Price Index (Period 1 = 1.00)",
+    x = "Time Period"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+### Python Implementation
+
+```{python}
+#| label: geks-python
+#| echo: true
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Generate sample data
+np.random.seed(123)
+n_periods = 6
+n_items = 5
+
+# Create price and quantity matrices
+price_data = np.zeros((n_items, n_periods))
+quantity_data = np.zeros((n_items, n_periods))
+
+# Initial values
+price_data[:, 0] = [10, 20, 15, 25, 30]
+quantity_data[:, 0] = [100, 50, 80, 40, 30]
+
+# Simulate changes
+for t in range(1, n_periods):
+    price_data[:, t] = price_data[:, t-1] * np.random.uniform(0.98, 1.12, n_items)
+    quantity_data[:, t] = quantity_data[:, t-1] * np.random.uniform(0.95, 1.05, n_items)
+
+def fisher_bilateral(p_s, p_t, q_s, q_t):
+    """Calculate bilateral Fisher index"""
+    laspeyres = np.sum(p_t * q_s) / np.sum(p_s * q_s)
+    paasche = np.sum(p_t * q_t) / np.sum(p_s * q_t)
+    return np.sqrt(laspeyres * paasche)
+
+def geks_index(price_data, quantity_data, period_0, period_t):
+    """Calculate GEKS index between two periods"""
+    n_periods = price_data.shape[1]
+    
+    # Calculate all bilateral indices
+    bilateral_matrix = np.ones((n_periods, n_periods))
+    
+    for s in range(n_periods):
+        for t in range(n_periods):
+            if s != t:
+                bilateral_matrix[s, t] = fisher_bilateral(
+                    price_data[:, s], price_data[:, t],
+                    quantity_data[:, s], quantity_data[:, t]
+                )
+    
+    # Calculate GEKS
+    product = 1.0
+    for j in range(n_periods):
+        product *= bilateral_matrix[period_0, j] / bilateral_matrix[period_t, j]
+    
+    geks = product ** (1/n_periods)
+    return geks
+
+# Calculate GEKS indices
+geks_indices = np.zeros(n_periods)
+geks_indices[0] = 1.0
+
+for t in range(1, n_periods):
+    geks_indices[t] = geks_index(price_data, quantity_data, 0, t)
+
+# Calculate chain Fisher for comparison
+chain_fisher = np.zeros(n_periods)
+chain_fisher[0] = 1.0
+
+for t in range(1, n_periods):
+    fisher = fisher_bilateral(
+        price_data[:, t-1], price_data[:, t],
+        quantity_data[:, t-1], quantity_data[:, t]
+    )
+    chain_fisher[t] = chain_fisher[t-1] * fisher
+
+# Create comparison
+comparison = pd.DataFrame({
+    'Period': range(1, n_periods + 1),
+    'GEKS': geks_indices,
+    'Chain_Fisher': chain_fisher
+})
+
+print(comparison)
+
+# Visualization
+plt.figure(figsize=(10, 6))
+plt.plot(comparison['Period'], comparison['GEKS'], 
+         'o-', color='#2563eb', linewidth=2, markersize=8, label='GEKS')
+plt.plot(comparison['Period'], comparison['Chain_Fisher'], 
+         's-', color='#f59e0b', linewidth=2, markersize=8, label='Chain Fisher')
+
+plt.xlabel('Time Period')
+plt.ylabel('Price Index (Period 1 = 1.00)')
+plt.title('GEKS vs Chain Fisher Index', fontsize=14, fontweight='bold')
+plt.legend()
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+## 3. GEKS-Törnqvist (GEKS-T)
+
+::: {.content-card}
+
+### Why GEKS-Törnqvist?
+
+GEKS-T combines the best of both worlds:
+- **Törnqvist** bilateral index (superlative, widely used)
+- **GEKS** method (ensures transitivity)
+
+This is the recommended method by many statistical agencies for CPI calculations.
+
+### R Implementation
+
+```{r}
+#| label: geks-tornqvist-r
+#| echo: true
+
+# Törnqvist bilateral function
+tornqvist_bilateral <- function(p_s, p_t, q_s, q_t) {
+  # Expenditure shares
+  exp_s <- p_s * q_s
+  exp_t <- p_t * q_t
+  shares_s <- exp_s / sum(exp_s)
+  shares_t <- exp_t / sum(exp_t)
+  
+  # Average shares
+  avg_shares <- (shares_s + shares_t) / 2
+  
+  # Price relatives
+  price_relatives <- p_t / p_s
+  
+  # Törnqvist
+  tornqvist <- exp(sum(avg_shares * log(price_relatives)))
+  return(tornqvist)
+}
+
+# GEKS-Törnqvist function
+geks_tornqvist <- function(price_data, quantity_data, period_0, period_t) {
+  n_periods <- ncol(price_data)
+  
+  # Calculate all bilateral Törnqvist indices
+  bilateral_matrix <- matrix(1, n_periods, n_periods)
+  
+  for (s in 1:n_periods) {
+    for (t in 1:n_periods) {
+      if (s != t) {
+        bilateral_matrix[s, t] <- tornqvist_bilateral(
+          price_data[, s], price_data[, t],
+          quantity_data[, s], quantity_data[, t]
+        )
+      }
+    }
+  }
+  
+  # Calculate GEKS
+  product <- 1
+  for (j in 1:n_periods) {
+    product <- product * (bilateral_matrix[period_0, j] / 
+                          bilateral_matrix[period_t, j])
+  }
+  
+  geks_t <- product^(1/n_periods)
+  return(geks_t)
+}
+
+# Calculate GEKS-T indices
+geks_t_indices <- numeric(n_periods)
+geks_t_indices[1] <- 1
+
+for (t in 2:n_periods) {
+  geks_t_indices[t] <- geks_tornqvist(price_data, quantity_data, 1, t)
+}
+
+# Compare all methods
+comparison_all <- data.frame(
+  Period = 1:n_periods,
+  GEKS_Fisher = geks_indices,
+  GEKS_Tornqvist = geks_t_indices,
+  Chain_Fisher = chain_fisher
+)
+
+print(comparison_all)
+
+# Visualization
+comparison_all_long <- comparison_all %>%
+  pivot_longer(cols = -Period, names_to = "Method", values_to = "Index")
+
+ggplot(comparison_all_long, aes(x = Period, y = Index, 
+                                color = Method, group = Method)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c(
+    "GEKS_Fisher" = "#2563eb",
+    "GEKS_Tornqvist" = "#10b981",
+    "Chain_Fisher" = "#f59e0b"
+  )) +
+  labs(
+    title = "Comparison of Multilateral Methods",
+    subtitle = "GEKS-Fisher vs GEKS-Törnqvist vs Chain Fisher",
+    y = "Price Index (Period 1 = 1.00)",
+    x = "Time Period"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+### Python Implementation
+
+```{python}
+#| label: geks-tornqvist-python
+#| echo: true
+
+def tornqvist_bilateral(p_s, p_t, q_s, q_t):
+    """Calculate bilateral Törnqvist index"""
+    exp_s = p_s * q_s
+    exp_t = p_t * q_t
+    shares_s = exp_s / exp_s.sum()
+    shares_t = exp_t / exp_t.sum()
+    
+    avg_shares = (shares_s + shares_t) / 2
+    price_relatives = p_t / p_s
+    
+    tornqvist = np.exp(np.sum(avg_shares * np.log(price_relatives)))
+    return tornqvist
+
+def geks_tornqvist_index(price_data, quantity_data, period_0, period_t):
+    """Calculate GEKS-Törnqvist index"""
+    n_periods = price_data.shape[1]
+    
+    # Calculate all bilateral Törnqvist indices
+    bilateral_matrix = np.ones((n_periods, n_periods))
+    
+    for s in range(n_periods):
+        for t in range(n_periods):
+            if s != t:
+                bilateral_matrix[s, t] = tornqvist_bilateral(
+                    price_data[:, s], price_data[:, t],
+                    quantity_data[:, s], quantity_data[:, t]
+                )
+    
+    # Calculate GEKS
+    product = 1.0
+    for j in range(n_periods):
+        product *= bilateral_matrix[period_0, j] / bilateral_matrix[period_t, j]
+    
+    return product ** (1/n_periods)
+
+# Calculate GEKS-T indices
+geks_t_indices = np.zeros(n_periods)
+geks_t_indices[0] = 1.0
+
+for t in range(1, n_periods):
+    geks_t_indices[t] = geks_tornqvist_index(price_data, quantity_data, 0, t)
+
+# Compare all methods
+comparison_all = pd.DataFrame({
+    'Period': range(1, n_periods + 1),
+    'GEKS_Fisher': geks_indices,
+    'GEKS_Tornqvist': geks_t_indices,
+    'Chain_Fisher': chain_fisher
+})
+
+print("\nComparison of all methods:")
+print(comparison_all)
+
+# Visualization
+plt.figure(figsize=(12, 7))
+plt.plot(comparison_all['Period'], comparison_all['GEKS_Fisher'], 
+         'o-', color='#2563eb', linewidth=2, markersize=8, 
+         label='GEKS-Fisher')
+plt.plot(comparison_all['Period'], comparison_all['GEKS_Tornqvist'], 
+         's-', color='#10b981', linewidth=2, markersize=8, 
+         label='GEKS-Törnqvist')
+plt.plot(comparison_all['Period'], comparison_all['Chain_Fisher'], 
+         '^-', color='#f59e0b', linewidth=2, markersize=8, 
+         label='Chain Fisher')
+
+plt.xlabel('Time Period', fontsize=12)
+plt.ylabel('Price Index (Period 1 = 1.00)', fontsize=12)
+plt.title('Comparison of Multilateral Methods', 
+          fontsize=14, fontweight='bold')
+plt.legend(fontsize=10)
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+## 4. Rolling Window GEKS
+
+::: {.content-card}
+
+### The Window Length Problem
+
+GEKS requires choosing a window length (number of periods to include):
+- **Longer windows**: More data, better characteristicity, but more revisions
+- **Shorter windows**: Fewer revisions, but less data utilization
+
+Common choices: 13 months, 25 months
+
+::: {.info-box .warning}
+**Trade-off**: Statistical agencies must balance data utilization against revision frequency when choosing window length.
+:::
+
+### R Implementation with Rolling Windows
+
+```{r}
+#| label: rolling-geks-r
+#| echo: true
+
+# Function for rolling window GEKS
+rolling_geks <- function(price_data, quantity_data, window_length) {
+  n_periods <- ncol(price_data)
+  indices <- numeric(n_periods)
+  indices[1] <- 1
+  
+  for (t in 2:n_periods) {
+    # Determine window
+    window_start <- max(1, t - window_length + 1)
+    window_end <- t
+    
+    # Extract window data
+    window_prices <- price_data[, window_start:window_end]
+    window_quantities <- quantity_data[, window_start:window_end]
+    
+    # Calculate GEKS within window
+    # Reference period is first period in window
+    window_index <- geks_index(window_prices, window_quantities, 1, 
+                                window_end - window_start + 1)
+    
+    # Link to previous period's level
+    if (t > window_length) {
+      # Use movement to link
+      indices[t] <- indices[t-1] * (window_index / 
+                      geks_index(window_prices, window_quantities, 1, 
+                                (window_end - 1) - window_start + 1))
+    } else {
+      # Build up index from base
+      indices[t] <- window_index
+    }
+  }
+  
+  return(indices)
+}
+
+# Calculate with different window lengths
+window_13 <- rolling_geks(price_data, quantity_data, 13)
+window_6 <- rolling_geks(price_data, quantity_data, 6)
+
+comparison_windows <- data.frame(
+  Period = 1:n_periods,
+  Window_13 = window_13,
+  Window_6 = window_6,
+  Full_GEKS = geks_indices
+)
+
+print(comparison_windows)
+```
+
+:::
+
+## 5. Guided Exercise
+
+::: {.exercise-box}
+### <i class="bi bi-pencil-square"></i> Exercise 1: Implement GEKS
+
+Using the following data for 4 time periods and 3 items:
+
+**Period 1**: p=(10,20,15), q=(100,50,80)  
+**Period 2**: p=(11,21,16), q=(95,52,78)  
+**Period 3**: p=(12,22,17), q=(90,54,76)  
+**Period 4**: p=(13,23,18), q=(88,56,74)
+
+**Tasks:**
+1. Calculate bilateral Fisher indices for all period pairs
+2. Implement GEKS for periods 2, 3, and 4 (using period 1 as base)
+3. Compare with chain Fisher indices
+4. Verify transitivity property
+:::
+
+::: {.exercise-box}
+### <i class="bi bi-pencil-square"></i> Exercise 2: Window Length Analysis
+
+Create a dataset with 24 monthly periods:
+1. Calculate GEKS with window lengths of 6, 13, and 25 months
+2. Compare the revision patterns
+3. Analyze the trade-offs
+4. Visualize the differences
+:::
+
+## 6. Key Takeaways
+
+::: {.info-box .success}
+**<i class="bi bi-check-circle"></i> What You've Learned:**
+
+- **GEKS**: Ensures transitivity through geometric averaging of bilateral comparisons
+- **GEKS-Törnqvist**: Combines Törnqvist bilateral index with GEKS framework
+- **Transitivity**: Critical property for consistent multilateral comparisons
+- **Window length**: Important practical consideration for implementation
+- **Applications**: CPI calculations, international comparisons, regional price indices
+:::
+
+## Next Steps
+
+::: {.content-card}
+
+### Ready for Week 4?
+
+Complete your learning journey with advanced linking and alternative multilateral methods.
+
+**Week 4 Topics:**
+- CCDI (Coordinated Consumer Price Index)
+- CPD (Country-Product-Dummy) method
+- Rolling window strategies
+- Linking techniques
+
+[<i class="bi bi-arrow-right-circle"></i> Continue to Week 4](week4.qmd){.btn .btn-primary}
+
+:::
+
+## References
+
+::: {.content-card}
+
+- Ivancic, L., Diewert, W.E., & Fox, K.J. (2011). "Scanner Data, Time Aggregation and the Construction of Price Indexes"
+- Hill, R.J. (2004). "Constructing Price Indexes Across Space and Time"
+- de Haan, J., & Krsinich, F. (2014). "Scanner Data and the Treatment of Quality Change in Nonrevisable Price Indexes"
+
+:::

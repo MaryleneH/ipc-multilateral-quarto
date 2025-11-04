@@ -1,0 +1,554 @@
+---
+title: "Week 2: Fisher & Törnqvist Indices"
+format: html
+---
+
+::: {.week-header}
+# Week 2: Bilateral Indices
+Master Fisher and Törnqvist price indices with quantity weights
+:::
+
+## Overview
+
+::: {.content-card}
+
+This week explores bilateral price indices that incorporate quantity or expenditure weights. These "superlative" indices provide more accurate measures of price change.
+
+**Learning Objectives:**
+- Understand the role of quantity weights in price indices
+- Implement Fisher and Törnqvist indices
+- Learn about axiomatic and economic approaches
+- Compare properties of superlative indices
+
+**Time Required:** ~4 hours
+:::
+
+## 1. Introduction to Weighted Indices
+
+::: {.content-card}
+
+### Why Use Weights?
+
+Elementary indices treat all items equally, but in reality:
+- Different items have different economic importance
+- Consumers spend varying amounts on different products
+- Weighted indices better reflect actual consumption patterns
+
+::: {.info-box}
+**Key Concept:** Bilateral indices compare prices between two time periods using quantity or expenditure weights to reflect economic importance.
+:::
+
+### Laspeyres and Paasche
+
+Before superlative indices, we have the foundational weighted indices:
+
+**Laspeyres Index** (base period weights):
+$$
+P_L = \frac{\sum p_t q_0}{\sum p_0 q_0}
+$$
+
+**Paasche Index** (current period weights):
+$$
+P_P = \frac{\sum p_t q_t}{\sum p_0 q_t}
+$$
+
+:::
+
+## 2. Fisher Index
+
+::: {.content-card}
+
+### Mathematical Formula
+
+The Fisher index is the geometric mean of Laspeyres and Paasche indices:
+
+$$
+P_F = \sqrt{P_L \times P_P} = \sqrt{\frac{\sum p_t q_0}{\sum p_0 q_0} \times \frac{\sum p_t q_t}{\sum p_0 q_t}}
+$$
+
+Where:
+- $p_t$, $p_0$ = prices in current and base periods
+- $q_t$, $q_0$ = quantities in current and base periods
+
+### Properties
+
+- Satisfies time reversal test: $P_F(0,t) \times P_F(t,0) = 1$
+- Satisfies factor reversal test
+- Considered a "superlative" index
+- Symmetric treatment of base and current periods
+
+### R Implementation
+
+```{r}
+#| label: fisher-r
+#| echo: true
+
+# Function to calculate Laspeyres Index
+laspeyres_index <- function(p_current, p_base, q_base) {
+  laspeyres <- sum(p_current * q_base) / sum(p_base * q_base)
+  return(laspeyres)
+}
+
+# Function to calculate Paasche Index
+paasche_index <- function(p_current, p_base, q_current) {
+  paasche <- sum(p_current * q_current) / sum(p_base * q_current)
+  return(paasche)
+}
+
+# Function to calculate Fisher Index
+fisher_index <- function(p_current, p_base, q_current, q_base) {
+  laspeyres <- laspeyres_index(p_current, p_base, q_base)
+  paasche <- paasche_index(p_current, p_base, q_current)
+  fisher <- sqrt(laspeyres * paasche)
+  return(fisher)
+}
+
+# Example data - prices and quantities for 5 products
+p_base <- c(10, 20, 15, 25, 30)
+p_current <- c(12, 22, 16, 28, 33)
+q_base <- c(100, 50, 80, 40, 30)
+q_current <- c(95, 55, 75, 45, 32)
+
+# Calculate indices
+laspeyres <- laspeyres_index(p_current, p_base, q_base)
+paasche <- paasche_index(p_current, p_base, q_current)
+fisher <- fisher_index(p_current, p_base, q_current, q_base)
+
+cat("Laspeyres Index:", round(laspeyres, 4), "\n")
+cat("Paasche Index:", round(paasche, 4), "\n")
+cat("Fisher Index:", round(fisher, 4), "\n")
+cat("\nFisher change:", round((fisher - 1) * 100, 2), "%\n")
+
+# Visualization
+library(ggplot2)
+library(dplyr)
+
+# Calculate expenditure shares
+exp_base <- p_base * q_base
+exp_current <- p_current * q_current
+shares_base <- exp_base / sum(exp_base)
+shares_current <- exp_current / sum(exp_current)
+
+data <- data.frame(
+  Item = paste("Item", 1:5),
+  Price_Change = ((p_current / p_base - 1) * 100),
+  Base_Share = shares_base * 100,
+  Current_Share = shares_current * 100
+)
+
+ggplot(data, aes(x = Item)) +
+  geom_col(aes(y = Price_Change, fill = "Price Change"), 
+           position = "dodge", alpha = 0.8) +
+  geom_point(aes(y = Base_Share * 5, color = "Base Share"), 
+             size = 4) +
+  geom_point(aes(y = Current_Share * 5, color = "Current Share"), 
+             size = 4) +
+  scale_y_continuous(
+    name = "Price Change (%)",
+    sec.axis = sec_axis(~./5, name = "Expenditure Share (%)")
+  ) +
+  scale_fill_manual(values = c("Price Change" = "#2563eb")) +
+  scale_color_manual(values = c("Base Share" = "#f59e0b", 
+                                 "Current Share" = "#10b981")) +
+  labs(
+    title = "Price Changes and Expenditure Shares",
+    subtitle = "Fisher Index accounts for changing weights",
+    x = "Item"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  )
+```
+
+### Python Implementation
+
+```{python}
+#| label: fisher-python
+#| echo: true
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def laspeyres_index(p_current, p_base, q_base):
+    """Calculate Laspeyres price index"""
+    return np.sum(p_current * q_base) / np.sum(p_base * q_base)
+
+def paasche_index(p_current, p_base, q_current):
+    """Calculate Paasche price index"""
+    return np.sum(p_current * q_current) / np.sum(p_base * q_current)
+
+def fisher_index(p_current, p_base, q_current, q_base):
+    """Calculate Fisher price index"""
+    laspeyres = laspeyres_index(p_current, p_base, q_base)
+    paasche = paasche_index(p_current, p_base, q_current)
+    return np.sqrt(laspeyres * paasche)
+
+# Example data
+p_base = np.array([10, 20, 15, 25, 30])
+p_current = np.array([12, 22, 16, 28, 33])
+q_base = np.array([100, 50, 80, 40, 30])
+q_current = np.array([95, 55, 75, 45, 32])
+
+# Calculate indices
+laspeyres = laspeyres_index(p_current, p_base, q_base)
+paasche = paasche_index(p_current, p_base, q_current)
+fisher = fisher_index(p_current, p_base, q_current, q_base)
+
+print(f"Laspeyres Index: {laspeyres:.4f}")
+print(f"Paasche Index: {paasche:.4f}")
+print(f"Fisher Index: {fisher:.4f}")
+print(f"\nFisher change: {(fisher - 1) * 100:.2f}%")
+
+# Visualization
+exp_base = p_base * q_base
+exp_current = p_current * q_current
+shares_base = (exp_base / exp_base.sum()) * 100
+shares_current = (exp_current / exp_current.sum()) * 100
+
+fig, ax1 = plt.subplots(figsize=(12, 6))
+
+items = [f'Item {i}' for i in range(1, 6)]
+x = np.arange(len(items))
+width = 0.6
+
+price_change = ((p_current / p_base - 1) * 100)
+
+ax1.bar(x, price_change, width, label='Price Change', 
+        color='#2563eb', alpha=0.8)
+ax1.set_xlabel('Item')
+ax1.set_ylabel('Price Change (%)', color='#2563eb')
+ax1.tick_params(axis='y', labelcolor='#2563eb')
+ax1.set_xticks(x)
+ax1.set_xticklabels(items)
+
+ax2 = ax1.twinx()
+ax2.plot(x, shares_base, 'o-', color='#f59e0b', 
+         markersize=8, linewidth=2, label='Base Share')
+ax2.plot(x, shares_current, 's-', color='#10b981', 
+         markersize=8, linewidth=2, label='Current Share')
+ax2.set_ylabel('Expenditure Share (%)')
+
+plt.title('Price Changes and Expenditure Shares', 
+          fontsize=14, fontweight='bold')
+
+# Combine legends
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+## 3. Törnqvist Index
+
+::: {.content-card}
+
+### Mathematical Formula
+
+The Törnqvist index uses logarithmic price relatives with average expenditure shares:
+
+$$
+\ln P_T = \sum_{i=1}^{n} \frac{1}{2}(s_i^0 + s_i^t) \ln\left(\frac{p_i^t}{p_i^0}\right)
+$$
+
+Where:
+- $s_i^0 = \frac{p_i^0 q_i^0}{\sum p_j^0 q_j^0}$ = expenditure share in base period
+- $s_i^t = \frac{p_i^t q_i^t}{\sum p_j^t q_j^t}$ = expenditure share in current period
+
+Equivalently:
+$$
+P_T = \prod_{i=1}^{n} \left(\frac{p_i^t}{p_i^0}\right)^{\frac{1}{2}(s_i^0 + s_i^t)}
+$$
+
+### Properties
+
+- Also a superlative index
+- Satisfies time reversal test
+- Based on Translog expenditure function
+- Commonly used in practice (e.g., CPI calculations)
+- Treats price relatives multiplicatively
+
+### R Implementation
+
+```{r}
+#| label: tornqvist-r
+#| echo: true
+
+# Function to calculate Törnqvist Index
+tornqvist_index <- function(p_current, p_base, q_current, q_base) {
+  # Calculate expenditure shares
+  exp_base <- p_base * q_base
+  exp_current <- p_current * q_current
+  
+  shares_base <- exp_base / sum(exp_base)
+  shares_current <- exp_current / sum(exp_current)
+  
+  # Average shares
+  avg_shares <- (shares_base + shares_current) / 2
+  
+  # Price relatives
+  price_relatives <- p_current / p_base
+  
+  # Törnqvist index
+  tornqvist <- exp(sum(avg_shares * log(price_relatives)))
+  
+  return(tornqvist)
+}
+
+# Calculate index
+tornqvist <- tornqvist_index(p_current, p_base, q_current, q_base)
+
+cat("Törnqvist Index:", round(tornqvist, 4), "\n")
+cat("Törnqvist change:", round((tornqvist - 1) * 100, 2), "%\n")
+
+# Compare all indices
+indices <- data.frame(
+  Index = c("Laspeyres", "Paasche", "Fisher", "Törnqvist"),
+  Value = c(laspeyres, paasche, fisher, tornqvist),
+  Change_Percent = c(
+    (laspeyres - 1) * 100,
+    (paasche - 1) * 100,
+    (fisher - 1) * 100,
+    (tornqvist - 1) * 100
+  )
+)
+
+print(indices)
+
+# Visualization
+ggplot(indices, aes(x = reorder(Index, Change_Percent), 
+                    y = Change_Percent, fill = Index)) +
+  geom_col(alpha = 0.8, show.legend = FALSE) +
+  geom_text(aes(label = sprintf("%.2f%%", Change_Percent)), 
+            hjust = -0.2, fontface = "bold") +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "Laspeyres" = "#ef4444",
+    "Paasche" = "#f59e0b",
+    "Fisher" = "#2563eb",
+    "Törnqvist" = "#10b981"
+  )) +
+  labs(
+    title = "Comparison of Price Indices",
+    subtitle = "Fisher and Törnqvist are superlative indices",
+    x = "Index Type",
+    y = "Price Change (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    panel.grid.minor = element_blank()
+  )
+```
+
+### Python Implementation
+
+```{python}
+#| label: tornqvist-python
+#| echo: true
+
+def tornqvist_index(p_current, p_base, q_current, q_base):
+    """Calculate Törnqvist price index"""
+    # Expenditure shares
+    exp_base = p_base * q_base
+    exp_current = p_current * q_current
+    
+    shares_base = exp_base / exp_base.sum()
+    shares_current = exp_current / exp_current.sum()
+    
+    # Average shares
+    avg_shares = (shares_base + shares_current) / 2
+    
+    # Price relatives
+    price_relatives = p_current / p_base
+    
+    # Törnqvist index
+    tornqvist = np.exp(np.sum(avg_shares * np.log(price_relatives)))
+    
+    return tornqvist
+
+# Calculate index
+tornqvist = tornqvist_index(p_current, p_base, q_current, q_base)
+
+print(f"Törnqvist Index: {tornqvist:.4f}")
+print(f"Törnqvist change: {(tornqvist - 1) * 100:.2f}%")
+
+# Compare all indices
+indices_comparison = pd.DataFrame({
+    'Index': ['Laspeyres', 'Paasche', 'Fisher', 'Törnqvist'],
+    'Value': [laspeyres, paasche, fisher, tornqvist]
+})
+indices_comparison['Change_Percent'] = (indices_comparison['Value'] - 1) * 100
+
+print("\nComparison of Price Indices:")
+print(indices_comparison)
+
+# Visualization
+plt.figure(figsize=(10, 6))
+colors = ['#ef4444', '#f59e0b', '#2563eb', '#10b981']
+bars = plt.barh(indices_comparison['Index'], 
+                indices_comparison['Change_Percent'], 
+                color=colors, alpha=0.8)
+
+for i, bar in enumerate(bars):
+    width = bar.get_width()
+    plt.text(width + 0.05, bar.get_y() + bar.get_height()/2, 
+             f'{width:.2f}%', ha='left', va='center', fontweight='bold')
+
+plt.xlabel('Price Change (%)')
+plt.ylabel('Index Type')
+plt.title('Comparison of Price Indices', fontsize=14, fontweight='bold')
+plt.grid(axis='x', alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+## 4. Axiomatic Properties
+
+::: {.content-card}
+
+### Key Tests for Price Indices
+
+::: {.info-box}
+**Time Reversal Test**: $P(0,t) \times P(t,0) = 1$
+
+Both Fisher and Törnqvist satisfy this test, meaning the index from period 0 to t multiplied by the index from t to 0 equals 1.
+:::
+
+::: {.info-box .warning}
+**Factor Reversal Test**: Price index × Quantity index = Value ratio
+
+Only the Fisher index satisfies this test perfectly.
+:::
+
+### R Code to Test Properties
+
+```{r}
+#| label: tests-r
+#| echo: true
+
+# Time Reversal Test
+test_time_reversal <- function(index_func, p_current, p_base, 
+                                q_current, q_base) {
+  forward <- index_func(p_current, p_base, q_current, q_base)
+  backward <- index_func(p_base, p_current, q_base, q_current)
+  product <- forward * backward
+  
+  cat("Forward index:", round(forward, 6), "\n")
+  cat("Backward index:", round(backward, 6), "\n")
+  cat("Product:", round(product, 6), "\n")
+  cat("Passes test:", abs(product - 1) < 0.0001, "\n\n")
+}
+
+cat("Fisher Index - Time Reversal Test:\n")
+test_time_reversal(fisher_index, p_current, p_base, q_current, q_base)
+
+cat("Törnqvist Index - Time Reversal Test:\n")
+test_time_reversal(tornqvist_index, p_current, p_base, q_current, q_base)
+```
+
+### Python Code to Test Properties
+
+```{python}
+#| label: tests-python
+#| echo: true
+
+def test_time_reversal(index_func, p_current, p_base, q_current, q_base):
+    """Test time reversal property"""
+    forward = index_func(p_current, p_base, q_current, q_base)
+    backward = index_func(p_base, p_current, q_base, q_current)
+    product = forward * backward
+    
+    print(f"Forward index: {forward:.6f}")
+    print(f"Backward index: {backward:.6f}")
+    print(f"Product: {product:.6f}")
+    print(f"Passes test: {abs(product - 1) < 0.0001}\n")
+
+print("Fisher Index - Time Reversal Test:")
+test_time_reversal(fisher_index, p_current, p_base, q_current, q_base)
+
+print("Törnqvist Index - Time Reversal Test:")
+test_time_reversal(tornqvist_index, p_current, p_base, q_current, q_base)
+```
+
+:::
+
+## 5. Guided Exercise
+
+::: {.exercise-box}
+### <i class="bi bi-pencil-square"></i> Exercise 1: Real-World Application
+
+You have price and quantity data for a consumer basket:
+
+**Product A**: p₀=50, q₀=20, p₁=55, q₁=18  
+**Product B**: p₀=100, q₀=10, p₁=105, q₁=11  
+**Product C**: p₀=25, q₀=40, p₁=30, q₁=35  
+
+**Tasks:**
+1. Calculate Laspeyres, Paasche, Fisher, and Törnqvist indices
+2. Explain why Laspeyres tends to be higher than Paasche
+3. Calculate the expenditure shares in both periods
+4. Create a visualization showing the relationships
+
+:::
+
+::: {.exercise-box}
+### <i class="bi bi-pencil-square"></i> Exercise 2: Time Series Chain Indices
+
+Create a time series with 12 months of data:
+1. Calculate monthly Fisher indices
+2. Create a chain-linked index series
+3. Compare chain vs. fixed-base indices
+4. Visualize the index evolution over time
+
+**Hint:** Chain linking multiplies successive month-to-month indices
+:::
+
+## 6. Key Takeaways
+
+::: {.info-box .success}
+**<i class="bi bi-check-circle"></i> What You've Learned:**
+
+- **Fisher Index**: Geometric mean of Laspeyres and Paasche, excellent theoretical properties
+- **Törnqvist Index**: Weighted geometric mean using average shares, widely used in practice
+- Both are "superlative" indices based on flexible functional forms
+- Weighted indices provide more accurate measures than elementary indices
+- Time reversal and factor reversal tests evaluate index quality
+:::
+
+## Next Steps
+
+::: {.content-card}
+
+### Ready for Week 3?
+
+Now that you understand bilateral indices, you're ready to tackle multilateral comparisons.
+
+**Week 3 Topics:**
+- GEKS method (Gini-Éltető-Köves-Szulc)
+- GEKS-Törnqvist
+- Multilateral comparisons
+- Transitivity properties
+
+[<i class="bi bi-arrow-right-circle"></i> Continue to Week 3](week3.qmd){.btn .btn-primary}
+
+:::
+
+## References
+
+::: {.content-card}
+
+- Diewert, W.E. (1976). "Exact and Superlative Index Numbers"
+- Hill, R.J. (2004). "Constructing Price Indexes Across Space and Time"
+- ILO et al. (2020). *Consumer Price Index Manual*
+
+:::

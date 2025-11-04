@@ -1,0 +1,799 @@
+---
+title: "Week 4: CCDI, CPD & Linking"
+format: html
+---
+
+::: {.week-header}
+# Week 4: Advanced Techniques
+Master CCDI, CPD methods, and rolling/linking strategies
+:::
+
+## Overview
+
+::: {.content-card}
+
+This final week covers advanced multilateral methods and practical implementation strategies for maintaining long-run price indices.
+
+**Learning Objectives:**
+- Understand CCDI (Coordinated Consumer Price Index) framework
+- Implement CPD (Country-Product-Dummy) regression method
+- Master rolling window and linking strategies
+- Compare different extension methods
+- Apply best practices for real-world implementation
+
+**Time Required:** ~4 hours
+:::
+
+## 1. Introduction to Advanced Methods
+
+::: {.content-card}
+
+### Beyond Basic GEKS
+
+While GEKS ensures transitivity, real-world applications need:
+- **Long time series**: How to extend indices beyond the window
+- **New products**: How to handle product replacement
+- **Revisions**: How to minimize or eliminate revisions
+- **Alternative approaches**: Methods like CPD for specific use cases
+
+::: {.info-box}
+**Key Concept:** Advanced methods address the practical challenges of maintaining price indices over extended periods while preserving desirable properties.
+:::
+
+:::
+
+## 2. CCDI (Coordinated Consumer Price Index)
+
+::: {.content-card}
+
+### What is CCDI?
+
+CCDI is a framework for international price comparisons that:
+- Coordinates across countries
+- Uses temporal linking
+- Applies multilateral methods
+- Ensures consistency across space and time
+
+### Temporal Linking Approach
+
+The key innovation is linking successive GEKS windows:
+
+$$
+I_{\text{CCDI}}(0,t) = I_{\text{GEKS}}(0,w_1) \times I_{\text{GEKS}}(w_1,w_2) \times \ldots \times I_{\text{GEKS}}(w_{k-1},t)
+$$
+
+Where $w_1, w_2, \ldots, w_{k-1}$ are link periods between windows.
+
+### R Implementation
+
+```{r}
+#| label: ccdi-r
+#| echo: true
+
+library(tidyverse)
+
+# Generate extended time series
+set.seed(456)
+n_periods <- 24  # 2 years of monthly data
+n_items <- 5
+
+price_data <- matrix(NA, n_items, n_periods)
+quantity_data <- matrix(NA, n_items, n_periods)
+
+# Initial values
+price_data[, 1] <- c(10, 20, 15, 25, 30)
+quantity_data[, 1] <- c(100, 50, 80, 40, 30)
+
+# Simulate realistic price movements
+for (t in 2:n_periods) {
+  # Add seasonal component and trend
+  trend <- 1.002  # 0.2% monthly trend
+  seasonal <- 1 + 0.01 * sin(2 * pi * t / 12)
+  
+  price_data[, t] <- price_data[, t-1] * trend * seasonal * 
+                     runif(n_items, 0.99, 1.03)
+  quantity_data[, t] <- quantity_data[, t-1] * 
+                        runif(n_items, 0.98, 1.02)
+}
+
+# Fisher bilateral function
+fisher_bilateral <- function(p_s, p_t, q_s, q_t) {
+  laspeyres <- sum(p_t * q_s) / sum(p_s * q_s)
+  paasche <- sum(p_t * q_t) / sum(p_s * q_t)
+  return(sqrt(laspeyres * paasche))
+}
+
+# GEKS function for a window
+geks_window <- function(price_window, quantity_window) {
+  n_window <- ncol(price_window)
+  indices <- numeric(n_window)
+  indices[1] <- 1
+  
+  for (t in 2:n_window) {
+    # Calculate GEKS for period t relative to period 1
+    bilateral_matrix <- matrix(1, n_window, n_window)
+    
+    for (s in 1:n_window) {
+      for (j in 1:n_window) {
+        if (s != j) {
+          bilateral_matrix[s, j] <- fisher_bilateral(
+            price_window[, s], price_window[, j],
+            quantity_window[, s], quantity_window[, j]
+          )
+        }
+      }
+    }
+    
+    product <- 1
+    for (j in 1:n_window) {
+      product <- product * (bilateral_matrix[1, j] / bilateral_matrix[t, j])
+    }
+    
+    indices[t] <- product^(1/n_window)
+  }
+  
+  return(indices)
+}
+
+# CCDI with rolling windows
+ccdi_index <- function(price_data, quantity_data, window_length = 13) {
+  n_periods <- ncol(price_data)
+  indices <- numeric(n_periods)
+  indices[1] <- 1
+  
+  # First window
+  window_end <- min(window_length, n_periods)
+  window_prices <- price_data[, 1:window_end]
+  window_quantities <- quantity_data[, 1:window_end]
+  window_indices <- geks_window(window_prices, window_quantities)
+  indices[1:window_end] <- window_indices
+  
+  # Roll forward
+  if (n_periods > window_length) {
+    for (t in (window_length + 1):n_periods) {
+      # New window
+      window_start <- t - window_length + 1
+      window_end <- t
+      
+      window_prices <- price_data[, window_start:window_end]
+      window_quantities <- quantity_data[, window_start:window_end]
+      window_indices <- geks_window(window_prices, window_quantities)
+      
+      # Link at overlap period
+      link_period <- window_length - 1
+      link_value <- indices[t - 1]
+      
+      # Movement from link period to current
+      movement <- window_indices[window_length] / window_indices[link_period]
+      indices[t] <- link_value * movement
+    }
+  }
+  
+  return(indices)
+}
+
+# Calculate CCDI with different window lengths
+ccdi_13 <- ccdi_index(price_data, quantity_data, 13)
+ccdi_25 <- ccdi_index(price_data, quantity_data, min(25, n_periods))
+
+# Calculate chain Fisher for comparison
+chain_fisher <- numeric(n_periods)
+chain_fisher[1] <- 1
+for (t in 2:n_periods) {
+  fisher <- fisher_bilateral(
+    price_data[, t-1], price_data[, t],
+    quantity_data[, t-1], quantity_data[, t]
+  )
+  chain_fisher[t] <- chain_fisher[t-1] * fisher
+}
+
+# Create comparison
+comparison <- data.frame(
+  Month = 1:n_periods,
+  CCDI_13 = ccdi_13,
+  CCDI_25 = ccdi_25,
+  Chain_Fisher = chain_fisher
+)
+
+# Visualization
+comparison_long <- comparison %>%
+  pivot_longer(cols = -Month, names_to = "Method", values_to = "Index")
+
+ggplot(comparison_long, aes(x = Month, y = Index, 
+                            color = Method, group = Method)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c(
+    "CCDI_13" = "#2563eb",
+    "CCDI_25" = "#10b981",
+    "Chain_Fisher" = "#f59e0b"
+  )) +
+  labs(
+    title = "CCDI Index with Different Window Lengths",
+    subtitle = "24 months of simulated price data",
+    y = "Price Index (Month 1 = 1.00)",
+    x = "Month"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+
+# Print summary statistics
+cat("\nFinal Index Values (Month 24):\n")
+cat("CCDI-13:", round(ccdi_13[n_periods], 4), "\n")
+cat("CCDI-25:", round(ccdi_25[n_periods], 4), "\n")
+cat("Chain Fisher:", round(chain_fisher[n_periods], 4), "\n")
+```
+
+### Python Implementation
+
+```{python}
+#| label: ccdi-python
+#| echo: true
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Generate extended time series
+np.random.seed(456)
+n_periods = 24
+n_items = 5
+
+price_data = np.zeros((n_items, n_periods))
+quantity_data = np.zeros((n_items, n_periods))
+
+# Initial values
+price_data[:, 0] = [10, 20, 15, 25, 30]
+quantity_data[:, 0] = [100, 50, 80, 40, 30]
+
+# Simulate with trend and seasonality
+for t in range(1, n_periods):
+    trend = 1.002
+    seasonal = 1 + 0.01 * np.sin(2 * np.pi * t / 12)
+    
+    price_data[:, t] = price_data[:, t-1] * trend * seasonal * \
+                       np.random.uniform(0.99, 1.03, n_items)
+    quantity_data[:, t] = quantity_data[:, t-1] * \
+                          np.random.uniform(0.98, 1.02, n_items)
+
+def fisher_bilateral(p_s, p_t, q_s, q_t):
+    """Calculate bilateral Fisher index"""
+    laspeyres = np.sum(p_t * q_s) / np.sum(p_s * q_s)
+    paasche = np.sum(p_t * q_t) / np.sum(p_s * q_t)
+    return np.sqrt(laspeyres * paasche)
+
+def geks_window(price_window, quantity_window):
+    """Calculate GEKS indices within a window"""
+    n_window = price_window.shape[1]
+    indices = np.zeros(n_window)
+    indices[0] = 1.0
+    
+    for t in range(1, n_window):
+        # Calculate bilateral matrix
+        bilateral_matrix = np.ones((n_window, n_window))
+        
+        for s in range(n_window):
+            for j in range(n_window):
+                if s != j:
+                    bilateral_matrix[s, j] = fisher_bilateral(
+                        price_window[:, s], price_window[:, j],
+                        quantity_window[:, s], quantity_window[:, j]
+                    )
+        
+        # Calculate GEKS
+        product = 1.0
+        for j in range(n_window):
+            product *= bilateral_matrix[0, j] / bilateral_matrix[t, j]
+        
+        indices[t] = product ** (1/n_window)
+    
+    return indices
+
+def ccdi_index(price_data, quantity_data, window_length=13):
+    """Calculate CCDI index with rolling windows"""
+    n_periods = price_data.shape[1]
+    indices = np.zeros(n_periods)
+    indices[0] = 1.0
+    
+    # First window
+    window_end = min(window_length, n_periods)
+    window_prices = price_data[:, 0:window_end]
+    window_quantities = quantity_data[:, 0:window_end]
+    window_indices = geks_window(window_prices, window_quantities)
+    indices[0:window_end] = window_indices
+    
+    # Roll forward
+    if n_periods > window_length:
+        for t in range(window_length, n_periods):
+            # New window
+            window_start = t - window_length + 1
+            window_end = t + 1
+            
+            window_prices = price_data[:, window_start:window_end]
+            window_quantities = quantity_data[:, window_start:window_end]
+            window_indices = geks_window(window_prices, window_quantities)
+            
+            # Link at overlap
+            link_period = window_length - 2
+            link_value = indices[t - 1]
+            
+            # Movement
+            movement = window_indices[-1] / window_indices[link_period]
+            indices[t] = link_value * movement
+    
+    return indices
+
+# Calculate indices
+ccdi_13 = ccdi_index(price_data, quantity_data, 13)
+ccdi_25 = ccdi_index(price_data, quantity_data, min(25, n_periods))
+
+# Chain Fisher
+chain_fisher = np.zeros(n_periods)
+chain_fisher[0] = 1.0
+for t in range(1, n_periods):
+    fisher = fisher_bilateral(
+        price_data[:, t-1], price_data[:, t],
+        quantity_data[:, t-1], quantity_data[:, t]
+    )
+    chain_fisher[t] = chain_fisher[t-1] * fisher
+
+# Visualization
+plt.figure(figsize=(12, 7))
+months = np.arange(1, n_periods + 1)
+
+plt.plot(months, ccdi_13, 'o-', color='#2563eb', 
+         linewidth=2, markersize=6, label='CCDI-13')
+plt.plot(months, ccdi_25, 's-', color='#10b981', 
+         linewidth=2, markersize=6, label='CCDI-25')
+plt.plot(months, chain_fisher, '^-', color='#f59e0b', 
+         linewidth=2, markersize=6, label='Chain Fisher')
+
+plt.xlabel('Month', fontsize=12)
+plt.ylabel('Price Index (Month 1 = 1.00)', fontsize=12)
+plt.title('CCDI Index with Different Window Lengths', 
+          fontsize=14, fontweight='bold')
+plt.legend(fontsize=10)
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+print("\nFinal Index Values (Month 24):")
+print(f"CCDI-13: {ccdi_13[-1]:.4f}")
+print(f"CCDI-25: {ccdi_25[-1]:.4f}")
+print(f"Chain Fisher: {chain_fisher[-1]:.4f}")
+```
+
+:::
+
+## 3. CPD (Country-Product-Dummy) Method
+
+::: {.content-card}
+
+### Regression-Based Approach
+
+CPD uses regression to estimate price levels:
+
+$$
+\ln p_{it} = \alpha_i + \beta_t + \varepsilon_{it}
+$$
+
+Where:
+- $p_{it}$ = price of product i in period t
+- $\alpha_i$ = product fixed effect
+- $\beta_t$ = time fixed effect (the price index)
+- $\varepsilon_{it}$ = error term
+
+### Properties
+
+- **Additivity**: Works well with many products
+- **Robustness**: Less sensitive to outliers
+- **Flexibility**: Can include other covariates
+- **Interpretation**: Time effects are log price indices
+
+### R Implementation
+
+```{r}
+#| label: cpd-r
+#| echo: true
+
+# Prepare data in long format
+cpd_data <- data.frame()
+
+for (t in 1:6) {  # Use first 6 periods
+  for (i in 1:n_items) {
+    cpd_data <- rbind(cpd_data, data.frame(
+      period = t,
+      item = i,
+      price = price_data[i, t],
+      quantity = quantity_data[i, t],
+      log_price = log(price_data[i, t])
+    ))
+  }
+}
+
+cpd_data$period_factor <- as.factor(cpd_data$period)
+cpd_data$item_factor <- as.factor(cpd_data$item)
+
+# Run CPD regression
+cpd_model <- lm(log_price ~ item_factor + period_factor - 1, 
+                data = cpd_data)
+
+# Extract time effects (period coefficients)
+period_coefs <- coef(cpd_model)[grep("period_factor", names(coef(cpd_model)))]
+
+# Convert to index (exponential of coefficients)
+cpd_indices <- exp(period_coefs - period_coefs[1])
+
+# Compare with other methods
+geks_6 <- numeric(6)
+geks_6[1] <- 1
+for (t in 2:6) {
+  bilateral_matrix <- matrix(1, 6, 6)
+  for (s in 1:6) {
+    for (j in 1:6) {
+      if (s != j) {
+        bilateral_matrix[s, j] <- fisher_bilateral(
+          price_data[, s], price_data[, j],
+          quantity_data[, s], quantity_data[, j]
+        )
+      }
+    }
+  }
+  
+  product <- 1
+  for (j in 1:6) {
+    product <- product * (bilateral_matrix[1, j] / bilateral_matrix[t, j])
+  }
+  geks_6[t] <- product^(1/6)
+}
+
+comparison_methods <- data.frame(
+  Period = 1:6,
+  CPD = cpd_indices,
+  GEKS = geks_6
+)
+
+print(comparison_methods)
+
+# Visualization
+comparison_methods_long <- comparison_methods %>%
+  pivot_longer(cols = -Period, names_to = "Method", values_to = "Index")
+
+ggplot(comparison_methods_long, aes(x = Period, y = Index, 
+                                    color = Method, group = Method)) +
+  geom_line(linewidth = 1.5) +
+  geom_point(size = 4) +
+  scale_color_manual(values = c("CPD" = "#8b5cf6", "GEKS" = "#2563eb")) +
+  labs(
+    title = "CPD vs GEKS Method",
+    subtitle = "Regression-based vs geometric mean approach",
+    y = "Price Index (Period 1 = 1.00)",
+    x = "Period"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+
+# Model diagnostics
+cat("\nCPD Model R-squared:", round(summary(cpd_model)$r.squared, 4), "\n")
+```
+
+### Python Implementation
+
+```{python}
+#| label: cpd-python
+#| echo: true
+
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import LabelEncoder
+import statsmodels.api as sm
+
+# Prepare data in long format
+cpd_list = []
+for t in range(6):
+    for i in range(n_items):
+        cpd_list.append({
+            'period': t,
+            'item': i,
+            'price': price_data[i, t],
+            'log_price': np.log(price_data[i, t])
+        })
+
+cpd_df = pd.DataFrame(cpd_list)
+
+# Create dummy variables
+period_dummies = pd.get_dummies(cpd_df['period'], prefix='period')
+item_dummies = pd.get_dummies(cpd_df['item'], prefix='item')
+
+# Combine predictors (drop one column to avoid collinearity)
+X = pd.concat([item_dummies.iloc[:, 1:], period_dummies], axis=1)
+y = cpd_df['log_price']
+
+# Fit model
+model = sm.OLS(y, X)
+results = model.fit()
+
+# Extract period coefficients
+period_cols = [col for col in X.columns if 'period' in col]
+period_coefs = np.zeros(6)
+period_coefs[0] = 0  # Reference period
+for i, col in enumerate(period_cols, 1):
+    period_coefs[i] = results.params[col]
+
+# Convert to price index
+cpd_indices = np.exp(period_coefs - period_coefs[0])
+
+print("\nCPD Indices:")
+for i, idx in enumerate(cpd_indices, 1):
+    print(f"Period {i}: {idx:.4f}")
+
+print(f"\nR-squared: {results.rsquared:.4f}")
+
+# Compare with GEKS
+geks_6 = np.zeros(6)
+geks_6[0] = 1.0
+
+for t in range(1, 6):
+    bilateral_matrix = np.ones((6, 6))
+    for s in range(6):
+        for j in range(6):
+            if s != j:
+                bilateral_matrix[s, j] = fisher_bilateral(
+                    price_data[:, s], price_data[:, j],
+                    quantity_data[:, s], quantity_data[:, j]
+                )
+    
+    product = 1.0
+    for j in range(6):
+        product *= bilateral_matrix[0, j] / bilateral_matrix[t, j]
+    geks_6[t] = product ** (1/6)
+
+# Visualization
+plt.figure(figsize=(10, 6))
+periods = np.arange(1, 7)
+
+plt.plot(periods, cpd_indices, 'o-', color='#8b5cf6', 
+         linewidth=2, markersize=10, label='CPD')
+plt.plot(periods, geks_6, 's-', color='#2563eb', 
+         linewidth=2, markersize=10, label='GEKS')
+
+plt.xlabel('Period', fontsize=12)
+plt.ylabel('Price Index (Period 1 = 1.00)', fontsize=12)
+plt.title('CPD vs GEKS Method', fontsize=14, fontweight='bold')
+plt.legend(fontsize=11)
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+## 4. Rolling and Linking Strategies
+
+::: {.content-card}
+
+### Extension Methods
+
+Three main approaches for extending multilateral indices:
+
+1. **Movement Splice**: Use movement from new window
+2. **Window Splice**: Use level from overlap period
+3. **Half Splice**: Average of movement and window splice
+
+### Comparison of Methods
+
+```{r}
+#| label: linking-r
+#| echo: true
+
+# Implement different splicing methods
+window_length <- 13
+
+# Movement splice (already implemented as CCDI)
+movement_splice <- ccdi_13
+
+# Window splice: use direct value from new window
+window_splice <- numeric(n_periods)
+window_splice[1] <- 1
+
+for (t in 2:n_periods) {
+  if (t <= window_length) {
+    window_start <- 1
+  } else {
+    window_start <- t - window_length + 1
+  }
+  
+  window_prices <- price_data[, window_start:t]
+  window_quantities <- quantity_data[, window_start:t]
+  window_indices <- geks_window(window_prices, window_quantities)
+  
+  window_splice[t] <- window_indices[length(window_indices)]
+}
+
+# Half splice: average of both
+half_splice <- (movement_splice + window_splice) / 2
+
+# Compare methods
+splicing_comparison <- data.frame(
+  Month = 1:n_periods,
+  Movement = movement_splice,
+  Window = window_splice,
+  Half = half_splice
+)
+
+print(tail(splicing_comparison, 12))
+
+# Visualization
+splicing_long <- splicing_comparison %>%
+  pivot_longer(cols = -Month, names_to = "Method", values_to = "Index")
+
+ggplot(splicing_long, aes(x = Month, y = Index, 
+                          color = Method, group = Method)) +
+  geom_line(linewidth = 1.2) +
+  scale_color_manual(values = c(
+    "Movement" = "#2563eb",
+    "Window" = "#10b981",
+    "Half" = "#8b5cf6"
+  )) +
+  labs(
+    title = "Comparison of Splicing Methods",
+    subtitle = "Different approaches to extending multilateral indices",
+    y = "Price Index (Month 1 = 1.00)",
+    x = "Month"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+:::
+
+## 5. Guided Exercise
+
+::: {.exercise-box}
+### <i class="bi bi-pencil-square"></i> Exercise 1: Implement CCDI
+
+Create a 36-month time series and:
+1. Implement CCDI with 13-month window
+2. Calculate revisions when new data arrives
+3. Compare with chain Fisher index
+4. Analyze the revision pattern
+
+**Challenge**: Implement a revision-free extension method
+:::
+
+::: {.exercise-box}
+### <i class="bi bi-pencil-square"></i> Exercise 2: CPD Analysis
+
+Using the provided data:
+1. Run CPD regression with product and time dummies
+2. Add quality adjustment variables
+3. Compare CPD with GEKS-Törnqvist
+4. Interpret the regression coefficients
+
+**Extension**: Test for seasonality in the residuals
+:::
+
+## 6. Key Takeaways
+
+::: {.info-box .success}
+**<i class="bi bi-check-circle"></i> What You've Learned:**
+
+- **CCDI**: Framework for coordinating multilateral indices over time
+- **CPD**: Regression-based alternative with different properties
+- **Rolling windows**: Practical approach for extending time series
+- **Linking strategies**: Movement, window, and half splice methods
+- **Trade-offs**: Balance between revisions, data use, and properties
+:::
+
+## Congratulations! 🎉
+
+::: {.content-card}
+
+### You've Completed the Learning Path!
+
+Over these 4 weeks, you've mastered:
+
+✅ Elementary indices (Jevons, Dutot, Carli)  
+✅ Superlative bilateral indices (Fisher, Törnqvist)  
+✅ Multilateral methods (GEKS, GEKS-T)  
+✅ Advanced techniques (CCDI, CPD, linking)
+
+### Next Steps
+
+- Apply these methods to real datasets
+- Explore specialized topics (scanner data, quality adjustment)
+- Read the academic literature
+- Contribute to open-source price index software
+
+### Resources
+
+- **R Packages**: `PriceIndices`, `IndexNumR`
+- **Python Libraries**: `pandas`, `statsmodels`
+- **Documentation**: ILO CPI Manual, PPI Manual
+- **Community**: Join price statistics forums and working groups
+
+[<i class="bi bi-house"></i> Return to Dashboard](index.qmd){.btn .btn-primary}
+
+:::
+
+## Final Exercise
+
+::: {.exercise-box}
+### <i class="bi bi-trophy"></i> Capstone Project
+
+**Build a Complete Price Index System**
+
+Using 24+ months of simulated or real price data:
+
+1. **Data Preparation**
+   - Clean and validate price and quantity data
+   - Handle missing values and outliers
+
+2. **Elementary Aggregation**
+   - Calculate Jevons indices at lowest level
+   - Compare with Dutot and Carli
+
+3. **Higher-Level Aggregation**
+   - Implement Fisher and Törnqvist indices
+   - Calculate with appropriate weights
+
+4. **Multilateral Implementation**
+   - Apply GEKS or GEKS-T method
+   - Implement rolling windows
+
+5. **Extension Strategy**
+   - Choose and implement linking method
+   - Analyze revisions
+
+6. **Visualization**
+   - Create dashboard with key indicators
+   - Show index evolution over time
+   - Compare different methods
+
+7. **Documentation**
+   - Write methodology notes
+   - Document data sources
+   - Explain design choices
+
+**Deliverables:**
+- Working code in R and/or Python
+- Comprehensive visualizations
+- Written methodology report
+- Presentation of results
+:::
+
+## References & Further Reading
+
+::: {.content-card}
+
+### Key Publications
+
+- ILO, IMF, OECD, Eurostat, UN, World Bank (2020). *Consumer Price Index Manual: Concepts and Methods*
+- IMF (2009). *Export and Import Price Index Manual: Theory and Practice*
+- Diewert, W.E., & Fox, K.J. (2020). *Measuring Real Consumption and CPI Bias*
+
+### Academic Papers
+
+- Ivancic, L., Diewert, W.E., & Fox, K.J. (2011). "Scanner Data, Time Aggregation and the Construction of Price Indexes"
+- Krsinich, F. (2016). "The FEWS Index: Fixed Effects with a Window Splice"
+- de Haan, J., & van der Grient, H.A. (2011). "Eliminating Chain Drift in Price Indexes"
+
+### Online Resources
+
+- UNECE CPI Training Materials
+- Ottawa Group Papers
+- Voorburg Group Documentation
+- Statistical Agency Methodologies
+
+:::
