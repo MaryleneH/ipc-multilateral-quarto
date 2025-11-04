@@ -277,7 +277,7 @@
     "href": "week4.html#overview",
     "title": "Week 4: CCDI, CPD & Linking",
     "section": "Overview",
-    "text": "Overview\n\nThis final week covers advanced multilateral methods and practical implementation strategies for maintaining long-run price indices.\nLearning Objectives: - Understand CCDI (Coordinated Consumer Price Index) framework - Implement CPD (Country-Product-Dummy) regression method - Master rolling window and linking strategies - Compare different extension methods - Apply best practices for real-world implementation\nTime Required: ~4 hours"
+    "text": "Overview\n\nThis final week covers advanced multilateral methods and practical implementation strategies for maintaining long-run price indices.\nLearning Objectives:\n\nUnderstand CCDI (Coordinated Consumer Price Index) framework\nImplement CPD (Country-Product-Dummy) regression method\nMaster rolling window and linking strategies\nCompare different extension methods\nApply best practices for real-world implementation\n\nTime Required: ~4 hours"
   },
   {
     "objectID": "week4.html#introduction-to-advanced-methods",
