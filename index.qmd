@@ -1,6 +1,24 @@
 ---
 title: "Dashboard"
-format: html
+author: "Marylene H"
+date: 2025-11-11
+format: 
+  html:
+    theme: cosmo
+    css: styles.css
+execute:
+  echo: false
+params:
+  weeks_completed: 0
+  total_weeks: 4
+  overall_progress: "0%"
+  exercises_done: "0/12"
+  estimated_time: "~16h"
+  total_lessons: 12
+  code_examples: 24
+  visualizations: 16
+  exercises: 12
+  avg_time_per_week: "4 hours"
 ---
 
 ::: {.week-header}
@@ -53,7 +71,7 @@ Exercises Done
 <i class="bi bi-clock-history"></i>
 :::
 ::: {.kpi-value}
-~16h
+around 10 days
 :::
 ::: {.kpi-label}
 Estimated Time
@@ -77,10 +95,13 @@ Estimated Time
 
 ## Weekly Progress
 
+*Estimated total time: around 10 days (≈2.5 days per week).* 
+
 ::: {.progress-container}
 ::: {.progress-label}
 <span>Week 1: Elementary Indices</span>
 <span>0%</span>
+<span>~2.5 days</span>
 :::
 ::: {.progress}
 <div class="progress-bar" style="width: 0%"></div>
@@ -91,6 +112,7 @@ Estimated Time
 ::: {.progress-label}
 <span>Week 2: Fisher & Törnqvist</span>
 <span>0%</span>
+<span>~2.5 days</span>
 :::
 ::: {.progress}
 <div class="progress-bar" style="width: 0%"></div>
@@ -101,6 +123,7 @@ Estimated Time
 ::: {.progress-label}
 <span>Week 3: GEKS Methods</span>
 <span>0%</span>
+<span>~2.5 days</span>
 :::
 ::: {.progress}
 <div class="progress-bar" style="width: 0%"></div>
@@ -111,6 +134,7 @@ Estimated Time
 ::: {.progress-label}
 <span>Week 4: Chain Linking</span>
 <span>0%</span>
+<span>~2.5 days</span>
 :::
 ::: {.progress}
 <div class="progress-bar" style="width: 0%"></div>
@@ -189,7 +213,7 @@ Learn CCDI (Coordinated Consumer Price Index) and CPD (Country-Product-Dummy) me
 | <i class="bi bi-code"></i> Code Examples | 24 |
 | <i class="bi bi-bar-chart"></i> Visualizations | 16 |
 | <i class="bi bi-pencil"></i> Exercises | 12 |
-| <i class="bi bi-clock"></i> Avg Time/Week | 4 hours |
+| <i class="bi bi-clock"></i> Avg Time/Week | ≈2.5 days |
 
 :::
 
